@@ -6,6 +6,10 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+app.get("/", (req, res) => {
+  res.send("Talksy backend is running 🚀");
+});
+
 const API_KEY = process.env.API_KEY
 app.post("/chat", async (req, res) => {
   try {
