@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Talksy</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gradient-to-br from-[#0f0c29] via-[#302b63] to-[#24243e] text-white">
+
+<!-- TOP BAR -->
+<header class="flex justify-between items-center px-4 md:px-10 py-4 md:py-6">
+  <div class="text-xl font-bold">💬 Talksy</div>
+
+  <!-- скрываем на мобиле -->
+  <nav class="hidden md:block space-x-6 text-sm text-gray-300">
+    <a href="#" onclick="openModal('how')">Как это работает</a>
+    <a href="#" onclick="openModal('scenarios')">Сценарии</a>
+    <a href="#" onclick="openModal('pricing')">Тарифы</a>
+  </nav>
+
+  <button onclick="startChat()"
+    class="bg-purple-500 px-4 py-2 rounded-xl hover:bg-purple-600 transition">
+    Попробовать бесплатно
+  </button>
+</header>
+
+<!-- HERO -->
+<section class="text-center mt-20 px-4">
+
+  <!-- ❗ исправили text-6x1 -->
+  <h1 class="text-4xl md:text-6xl font-bold mb-4 bg-gradient-to-r from-purple-400 to-pink-400 text-transparent bg-clip-text">
+    Talksy
+  </h1>
+
+  <!-- ❗ исправили text-2x1 -->
+  <p class="text-lg md:text-2xl mb-6">
+    Разговорный английский без страха
+  </p>
+
+  <p class="text-gray-300 max-w-xl mx-auto mb-10">
+    Практикуй живое общение на английском с AI.  
+    Без скучных упражнений — только реальные диалоги.
+  </p>
+
+  <div class="mt-10 flex justify-center">
+    <button onclick="startChat('general')"
+      class="px-5 py-3 rounded-2xl text-base md:text-lg font-semibold text-white
+      bg-gradient-to-r from-purple-500 via-pink-500 to-purple-600
+      hover:opacity-90 transition active:scale-95">
+      Начать говорить
+    </button>
+  </div>
+
+</section>
+
+
+<!-- FEATURES -->
+<section class="mt-24 grid grid-cols-1 md:grid-cols-3 gap-6 px-4 md:px-10">
+
+  <div class="bg-white/10 p-6 rounded-2xl">
+    <h3 class="font-bold mb-2">1. Ситуации</h3>
+    <p class="text-gray-300 text-sm">Интервью, кафе, путешествия и другое</p>
+  </div>
+
+  <div class="bg-white/10 p-6 rounded-2xl">
+    <h3 class="font-bold mb-2">2. Разговор</h3>
+    <p class="text-gray-300 text-sm">Ты общаешься с AI как с человеком</p>
+  </div>
+
+  <div class="bg-white/10 p-6 rounded-2xl">
+    <h3 class="font-bold mb-2">3. Обратная связь</h3>
+    <p class="text-gray-300 text-sm">AI исправляет ошибки и объясняет</p>
+  </div>
+
+</section>
+
+<!-- SCENARIOS -->
+<section class="mt-24 px-4 md:px-10">
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div class="bg-white/10 p-6 rounded-2xl">
+      <h2 class="font-bold mb-2">Job Interview</h2>
+      <p class="text-gray-300 text-sm mb-4">Практика собеседований</p>
+      <button onclick="startChat('interview')"
+        class="bg-purple-500 w-full py-2 rounded-xl hover:bg-purple-600">
+        Попробовать сейчас
+      </button>
+    </div>
+
+    <div class="bg-white/10 p-6 rounded-2xl">
+      <h2 class="font-bold mb-2">Общение с друзьями</h2>
+      <p class="text-gray-300 text-sm mb-4">Повседневный английский</p>
+      <button onclick="startChat('friends')"
+        class="bg-purple-500 w-full py-2 rounded-xl hover:bg-purple-600">
+        Попробовать сейчас
+      </button>
+    </div>
+
+    <div class="bg-white/10 p-6 rounded-2xl">
+      <h2 class="font-bold mb-2">В кафе</h2>
+      <p class="text-gray-300 text-sm mb-4">Заказ еды и диалоги</p>
+      <button onclick="startChat('cafe')"
+        class="bg-purple-500 w-full py-2 rounded-xl hover:bg-purple-600">
+        Попробовать сейчас
+      </button>
+    </div>
+
+    <div class="bg-white/10 p-6 rounded-2xl">
+      <h2 class="font-bold mb-2">Путешествие</h2>
+      <p class="text-gray-300 text-sm mb-4">Аэропорт, отель, такси</p>
+      <button onclick="startChat('travel')"
+        class="bg-purple-500 w-full py-2 rounded-xl hover:bg-purple-600">
+        Попробовать сейчас
+      </button>
+    </div>
+
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="text-center text-gray-400 mt-20 py-6 md:py-10 text-sm">
+  <div> © 2026 Talksy — Speak English without fear </div>
+  <div class="mt-2 text-gray-500">
+    by Liza Frolova
+  </div>
+</footer>
+
+<!-- MODAL -->
+<div id="modal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center p-6">
+
+  <div class="bg-[#1a1635] max-w-md w-full p-6 rounded-2xl relative">
+
+    <button onclick="closeModal()" class="absolute top-2 right-3 text-gray-400 text-xl">×</button>
+
+    <h2 id="modalTitle" class="text-xl font-bold mb-3"></h2>
+    <p id="modalText" class="text-gray-300 text-sm"></p>
+
+  </div>
+
+</div>
+
+<!-- JS -->
+<script>
+
+function startChat(mode) {
+  const chatId = Date.now().toString();
+
+  // создаём новый чат
+  localStorage.setItem("chat_" + chatId, JSON.stringify([]));
+  localStorage.setItem("chat_" + chatId + "_title", mode + " chat");
+
+  // сохраняем сценарий для этого чата
+  localStorage.setItem("pending_mode_" + chatId, mode);
+
+  // открываем чат с id
+  window.location.href = "chat.html?id=" + chatId;
+}
+
+function openModal(type) {
+  const modal = document.getElementById("modal");
+  const title = document.getElementById("modalTitle");
+  const text = document.getElementById("modalText");
+
+  modal.classList.remove("hidden");
+
+  if (type === "how") {
+    title.innerText = "Как это работает";
+    text.innerText = "Ты выбираешь сценарий и общаешься с AI как с реальным человеком. Он помогает учить английский через практику.";
+  }
+
+  if (type === "scenarios") {
+    title.innerText = "Сценарии";
+    text.innerText = "Интервью, кафе, путешествия, друзья — разные реальные ситуации для практики языка.";
+  }
+
+  if (type === "pricing") {
+    title.innerText = "Тарифы";
+    text.innerText = "Сейчас проект бесплатный. В будущем могут появиться расширенные функции AI.";
+  }
+}
+
+function closeModal() {
+  document.getElementById("modal").classList.add("hidden");
+}
+</script>
+
+</body>
+</html>

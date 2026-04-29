@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Talksy Chat</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-[#0f0c29] text-white h-[100dvh] flex flex-col md:flex-row">
+
+  <!-- SIDEBAR -->
+  <div id="sidebar"
+  class="fixed md:static top-0 left-0 h-[100dvh] w-64 bg-black/90 md:bg-black/30 p-3 flex flex-col
+  transform -translate-x-full md:translate-x-0 transition duration-300 z-50">
+
+    <button onclick="newChat()"
+      class="bg-purple-500 hover:bg-purple-600 text-white py-2 rounded-xl mb-3">
+      + Новый чат
+    </button>
+
+    <div id="chatList" class="flex-1 overflow-y-auto"></div>
+
+  </div>
+
+<div id="overlay"
+  onclick="toggleSidebar()"
+  class="fixed inset-0 bg-black/50 hidden z-40 md:hidden">
+</div>
+
+  <!-- MAIN CHAT -->
+  <div class="flex-1 flex flex-col h-[100dvh]">
+
+    <div class="p-4 border-b border-white/10 flex items-center gap-3">
+
+  <!-- ☰ кнопка -->
+  <button onclick="toggleSidebar()" class="md:hidden text-xl">
+    ☰
+  </button>
+
+  <h1 class="text-lg md:text-xl font-bold">Talksy AI</h1>
+
+</div>
+
+<div class="px-4 py-2 border-b border-white/10 flex gap-2 text-sm overflow-x-auto">
+
+  <button onclick="setMode('general')" class="px-3 py-1 bg-white/10 rounded-xl hover:bg-white/20">
+    General
+  </button>
+
+  <button onclick="setMode('interview')" class="px-3 py-1 bg-white/10 rounded-xl hover:bg-white/20">
+    Interview
+  </button>
+
+  <button onclick="setMode('friends')" class="px-3 py-1 bg-white/10 rounded-xl hover:bg-white/20">
+    Friends
+  </button>
+
+  <button onclick="setMode('travel')" class="px-3 py-1 bg-white/10 rounded-xl hover:bg-white/20">
+    Travel
+  </button>
+  
+  <button onclick="setMode('cafe')" class="px-3 py-1 bg-white/10 rounded-xl hover:bg-white/20">
+    Cafe
+  </button>
+
+</div>
+
+    <div id="chat" class="flex-1 p-4 md:p-6 space-y-3 overflow-y-auto"></div>
+
+    <div class="p-3 md:p-4 border-t border-white/10 flex gap-2">
+
+      <input id="input"
+        class="flex-1 p-3 rounded-xl text-black text-sm md:text-base"
+        placeholder="Напиши сообщение..." />
+
+      <button onclick="sendMessage()" class="bg-purple-500 px-4 md:px-6 rounded-xl">
+        Send
+      </button>
+
+    </div>
+
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
