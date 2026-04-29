@@ -269,7 +269,8 @@ function hideTyping() {
 // ===============================
 async function getCorrection(text) {
   try {
-    const res = await fetch("http://localhost:3000/chat", {
+    const res = await fetch("https://talksy1-production.up.railway.app/chat", {
+
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -313,7 +314,8 @@ async function getAIReply(text) {
   try {
     const state = getScenarioState();
 
-    const res = await fetch("http://localhost:3000/chat", {
+    const res = await fetch("https://talksy1-production.up.railway.app/chat", {
+
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -349,7 +351,8 @@ If mode = friends:
 async function getScenarioReply(mode, userText) {
   const scenario = scenarios[mode];
 
-  const res = await fetch("http://localhost:3000/chat", {
+  const res = await fetch("https://talksy1-production.up.railway.app/chat", {
+
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
