@@ -1,6 +1,8 @@
 // ===============================
 let currentChatId = "main";
 
+let currentLevel = localStorage.getItem("level") || "B";
+
 // 🔥 сценарии
 const scenarios = {
   cafe: {
@@ -38,6 +40,21 @@ function getScenarioState() {
 
 // ===============================
 window.onload = function () {
+
+const savedLevel = localStorage.getItem("level") || "B";
+currentLevel = savedLevel;
+
+const label = document.getElementById("levelLabel");
+if (label) label.innerText = savedLevel;
+
+const btn = document.getElementById("levelBtn");
+if (btn) {
+  btn.classList.remove("bg-white/10", "bg-purple-500");
+  btn.classList.add("bg-purple-500");
+}
+
+
+
 const params = new URLSearchParams(window.location.search);
 const idFromUrl = params.get("id");
 
@@ -324,9 +341,16 @@ async function getAIReply(text) {
           {
             role: "system",
             content: `
+${getLevelPrompt()}
+
 You are a friendly English tutor.
 
 Mode: ${state.mode || "normal"}
+
+Behavior rules:
+- At LEVEL A: speak like simple tutor, slow thinking, basic words
+- At LEVEL B: natural conversational English, friendly tone
+- At LEVEL C: native speaker, expressive, emotional, flexible grammar
 
 If mode = friends:
 - slang
@@ -361,7 +385,20 @@ async function getScenarioReply(mode, userText) {
         {
           role: "system",
           content: `
-You are a real human roleplaying conversation.
+          You are a real human roleplaying conversation.
+          Level: ${currentLevel}
+
+${getLevelPrompt()}
+
+Level affects EVERYTHING you say:
+- vocabulary
+- sentence length
+- question complexity
+
+Behavior rules:
+- At LEVEL A: speak like simple tutor, slow thinking, basic words
+- At LEVEL B: natural conversational English, friendly tone
+- At LEVEL C: native speaker, expressive, emotional, flexible grammar
 
 Topic: ${scenario.topic}
 Style: ${scenario.style}
@@ -544,6 +581,64 @@ function toggleSidebar() {
     overlay.classList.remove("hidden");
   }
 }
+
+function getLevelPrompt() {
+  if (currentLevel === "A") {
+    return `
+LEVEL A (Beginner):
+- Use VERY simple English (A1-A2)
+- Max 1 short sentence
+- Max 6–10 words per sentence
+- Use basic vocabulary only (eat, go, want, like)
+- NO idioms, NO phrasal verbs
+- Ask simple questions like "What is this?", "Do you like it?"
+- Speak like teacher talking to beginner child
+`;
+  }
+
+  if (currentLevel === "B") {
+    return `
+LEVEL B (Intermediate):
+- Use natural everyday English (B1-B2)
+- 1–2 sentences max
+- Can use basic phrasal verbs (go out, come back)
+- Simple explanations allowed
+- Ask normal conversational questions
+`;
+  }
+
+  if (currentLevel === "C") {
+    return `
+LEVEL C (Advanced):
+- Natural native English (C1-C2)
+- 2–3 sentences max
+- Use idioms, phrasal verbs, natural expressions
+- More emotional and expressive language
+- Ask deeper, open-ended questions
+`;
+  }
+}
+
+
+function setLevel(level) {
+  currentLevel = level;
+  localStorage.setItem("level", level);
+
+  document.getElementById("levelLabel").innerText = level;
+
+  const btn = document.getElementById("levelBtn");
+
+  if (btn) {
+    btn.classList.remove("bg-white/10", "bg-purple-500");
+    btn.classList.add("bg-purple-500");
+  }
+  
+  document.getElementById("levelMenu").classList.add("hidden");
+}
+function toggleLevelMenu() {
+  document.getElementById("levelMenu").classList.toggle("hidden");
+}
+
 
 // ===============================
 window.setMode = setMode;

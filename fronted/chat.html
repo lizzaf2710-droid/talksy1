@@ -41,6 +41,24 @@
 
 </div>
 
+<div id="levelMenu"
+     class="hidden absolute top-14 right-4 bg-black/90 p-2 rounded-xl text-sm z-50">
+
+  <div onclick="setLevel('A')" class="p-2 hover:bg-white/10 rounded cursor-pointer">
+    A - Beginner
+  </div>
+
+  <div onclick="setLevel('B')" class="p-2 hover:bg-white/10 rounded cursor-pointer">
+    B - Intermediate
+  </div>
+
+  <div onclick="setLevel('C')" class="p-2 hover:bg-white/10 rounded cursor-pointer">
+    C - Advanced
+  </div>
+
+</div>
+
+
 <div class="px-4 py-2 border-b border-white/10 flex gap-2 text-sm overflow-x-auto">
 
   <button onclick="setMode('general')" class="px-3 py-1 bg-white/10 rounded-xl hover:bg-white/20">
@@ -62,6 +80,15 @@
   <button onclick="setMode('cafe')" class="px-3 py-1 bg-white/10 rounded-xl hover:bg-white/20">
     Cafe
   </button>
+
+ <button id="levelBtn"
+  onclick="toggleLevelMenu()"
+  class="px-3 py-1 bg-white/10 rounded-xl text-sm hover:bg-purple-500 transition flex items-center gap-2">
+
+  Level
+  <span id="levelLabel" class="font-bold">B</span>
+
+</button>
 
 </div>
 
