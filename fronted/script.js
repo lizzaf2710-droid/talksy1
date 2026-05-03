@@ -3,6 +3,15 @@ let currentChatId = "main";
 
 let currentLevel = localStorage.getItem("level") || "B";
 
+let savedWords = JSON.parse(localStorage.getItem("saved_words") || "[]");
+
+let translationCache = {};
+
+let wordsFilter = "all";
+
+let flashIndex = 0;
+let flashFlipped = false;
+
 // 🔥 сценарии
 const scenarios = {
   cafe: {
@@ -211,7 +220,17 @@ function addMessage(role, text) {
   wrapper.style.margin = "6px 0";
 
   const bubble = document.createElement("div");
-  bubble.innerText = cleanText(text);
+  bubble.innerHTML = makeWordsClickable(text);
+
+
+  bubble.querySelectorAll(".word").forEach(el => {
+  el.addEventListener("click", (e) => {
+    e.stopPropagation();
+    handleWordClick(el.innerText);
+  });
+});
+
+  
 
   bubble.style.display = "inline-block";
   bubble.style.padding = "10px 14px";
@@ -629,14 +648,354 @@ function setLevel(level) {
   const btn = document.getElementById("levelBtn");
 
   if (btn) {
-    btn.classList.remove("bg-white/10", "bg-purple-500");
-    btn.classList.add("bg-purple-500");
+    btn.classList.remove("bg-purple-500/30", "bg-purple-500/50");
+    btn.classList.add("bg-purple-500/50");
   }
   
   document.getElementById("levelMenu").classList.add("hidden");
 }
 function toggleLevelMenu() {
   document.getElementById("levelMenu").classList.toggle("hidden");
+}
+
+
+function makeWordsClickable(text) {
+  return cleanText(text)
+    .split(" ")
+    .map(word => {
+      const clean = word.toLowerCase().replace(/[.,!?]/g, "");
+      const isSaved = savedWords.find(w => w.word === clean);
+
+      return `<span class="word ${isSaved ? "saved" : ""}">${word}</span>`;
+    })
+    .join(" ");
+}
+
+
+async function handleWordClick(word) {
+  const clean = word.toLowerCase().replace(/[.,!?]/g, "");
+
+  const existing = savedWords.find(w => w.word === clean);
+
+  const translation = await translateWord(clean);
+
+  if (!existing) {
+    savedWords.push({
+      word: clean,
+      translation: translation,
+      favorite: false,
+      learned: false,
+      repeats: 0,
+      lastReviewed: null
+      
+    });
+
+    localStorage.setItem("saved_words", JSON.stringify(savedWords));
+  }
+
+  showTooltip(clean, translation);
+
+  document.querySelectorAll(".word").forEach(el => {
+    if (el.innerText.toLowerCase().replace(/[.,!?]/g, "") === clean) {
+      el.classList.add("saved");
+    }
+  });
+}
+
+
+
+async function translateWord(word) {
+  if (translationCache[word]) return translationCache[word];
+
+  try {
+    const res = await fetch("https://talksy1-production.up.railway.app/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "llama3",
+        messages: [
+          {
+            role: "system",
+            content: "Translate this word to Russian. Answer ONLY with translation."
+          },
+          { role: "user", content: word }
+        ]
+      })
+    });
+
+    const data = await res.json();
+    const result = data.message?.content || "no translation";
+
+    translationCache[word] = result; // 🔥 ВАЖНО
+
+    return result;
+
+  } catch {
+    return "error";
+  }
+}
+
+
+
+
+function showTooltip(word, translation) {
+  const tooltip = document.createElement("div");
+
+  tooltip.innerText = `${word} → ${translation}`;
+
+  tooltip.style.position = "fixed";
+  tooltip.style.bottom = "20px";
+  tooltip.style.left = "50%";
+  tooltip.style.transform = "translateX(-50%)";
+  tooltip.style.background = "#111";
+  tooltip.style.color = "white";
+  tooltip.style.padding = "10px 14px";
+  tooltip.style.borderRadius = "10px";
+  tooltip.style.zIndex = "999";
+
+  document.body.appendChild(tooltip);
+
+  setTimeout(() => tooltip.remove(), 2500);
+}
+
+
+
+function openWords() {
+  document.getElementById("wordsScreen").classList.remove("hidden");
+  renderWords();
+  updateWordsCounters();
+  updateProgress();
+}
+
+function closeWords() {
+  document.getElementById("wordsScreen").classList.add("hidden");
+}
+
+
+
+async function renderWords() {
+  const list = document.getElementById("wordsList");
+  list.innerHTML = "";
+
+  let filtered = savedWords;
+
+  if (wordsFilter === "favorites") {
+    filtered = savedWords.filter(w => w.favorite);
+  }
+
+  for (let word of filtered) {
+    const translation = word.translation || await translateWord(word.word);
+
+    const isFav = word.favorite;
+
+    const item = document.createElement("div");
+    item.className = "flex justify-between items-center bg-white/10 p-3 rounded-xl";
+
+    item.innerHTML = `
+  <div>
+    <div class="font-bold">${word.word}</div>
+    <div class="text-sm opacity-70">${translation}</div>
+  </div>
+
+  <div class="flex items-center gap-3">
+
+    <button onclick="speakWord('${word.word}')" class="text-lg">
+      🔊
+    </button>
+
+    <!-- ⭐ favorite -->
+    <button onclick="toggleFavorite('${word.word}')" class="text-xl">
+      ${word.favorite ? "⭐" : "○"}
+    </button>
+
+    <!-- ❌ delete -->
+    <button onclick="removeWord('${word.word}')" class="text-red-400 text-lg">
+      ✕
+    </button>
+
+  </div>
+`;
+
+    list.appendChild(item);
+  }
+}
+
+function removeWord(word) {
+  savedWords = savedWords.filter(w => w.word !== word);
+  localStorage.setItem("saved_words", JSON.stringify(savedWords));
+
+  renderWords();
+
+  document.querySelectorAll(".word").forEach(el => {
+    const clean = el.innerText.toLowerCase().replace(/[.,!?]/g, "");
+    if (clean === word) {
+      el.classList.remove("saved");
+    }
+  });
+}
+
+function setWordsFilter(type) {
+  wordsFilter = type;
+  renderWords();
+  updateWordsCounters();
+  updateProgress();
+}
+
+
+function toggleFavorite(word) {
+  const item = savedWords.find(w => w.word === word);
+  if (!item) return;
+
+  item.favorite = !item.favorite;
+
+  localStorage.setItem("saved_words", JSON.stringify(savedWords));
+
+  renderWords();
+  updateWordsCounters();
+  updateProgress();
+}
+
+
+
+function openFlashcards() {
+  document.getElementById("flashcardsScreen").classList.remove("hidden");
+  flashIndex = 0;
+  flashFlipped = false;
+  renderFlashcard();
+}
+
+
+function closeFlashcards() {
+  document.getElementById("flashcardsScreen").classList.add("hidden");
+}
+
+
+function renderFlashcard() {
+  const card = document.getElementById("flashcard");
+
+  const studyWords = getStudyWords();
+
+  if (!studyWords.length) {
+    card.innerHTML = "🎉 You learned all words!";
+    return;
+  }
+
+  const word = studyWords[flashIndex];
+
+  if (!flashFlipped) {
+    card.innerHTML = `<div>${word.word}</div>`;
+  } else {
+    card.innerHTML = `
+      <div>${word.translation || "..."}</div>
+
+      <div class="flex gap-6 mt-5 justify-center text-2xl">
+
+        <button onclick="markDontKnow(event)" class="opacity-70 hover:opacity-100">
+          ○ ✖
+        </button>
+
+        <button onclick="markKnow(event)" class="opacity-70 hover:opacity-100">
+          ○ ✔
+        </button>
+
+      </div>
+    `;
+  }
+}
+
+
+
+function flipCard() {
+  flashFlipped = !flashFlipped;
+  renderFlashcard();
+}
+
+
+function nextCard() {
+  const studyWords = getStudyWords();
+  if (!studyWords.length) return;
+
+  flashIndex = (flashIndex + 1) % studyWords.length;
+  flashFlipped = false;
+  renderFlashcard();
+}
+
+
+function prevCard() {
+  const studyWords = getStudyWords();
+  if (!studyWords.length) return;
+
+  flashIndex = (flashIndex - 1 + studyWords.length) % studyWords.length;
+  flashFlipped = false;
+  renderFlashcard();
+}
+
+
+function updateWordsCounters() {
+  const allCount = savedWords.length;
+
+  const favCount = savedWords.filter(w => w.favorite).length;
+
+  document.getElementById("allCount").innerText = allCount;
+  document.getElementById("favCount").innerText = favCount;
+}
+
+
+
+
+function updateProgress() {
+  const total = savedWords.length;
+  const learned = savedWords.filter(w => w.learned).length;
+
+  const percent = total === 0 ? 0 : Math.round((learned / total) * 100);
+
+  document.getElementById("totalCount").innerText = total;
+  document.getElementById("learnedCount").innerText = learned;
+  document.getElementById("progressPercent").innerText = percent;
+
+  document.getElementById("progressBar").style.width = percent + "%";
+}
+
+
+function markKnow(e) {
+  e.stopPropagation();
+
+  const studyWords = getStudyWords();
+  const word = studyWords[flashIndex];
+
+  word.learned = true;
+
+  localStorage.setItem("saved_words", JSON.stringify(savedWords));
+
+  updateProgress();
+  nextCard();
+}
+
+function markDontKnow(e) {
+  e.stopPropagation();
+
+  const studyWords = getStudyWords();
+  const word = studyWords[flashIndex];
+
+  word.learned = false;
+
+  localStorage.setItem("saved_words", JSON.stringify(savedWords));
+
+  updateProgress();
+  nextCard();
+}
+
+function getStudyWords() {
+  return savedWords.filter(w => !w.learned);
+}
+
+function speakWord(word) {
+  const utterance = new SpeechSynthesisUtterance(word);
+
+  utterance.lang = "en-US"; // английский
+  utterance.rate = 0.9; // скорость (0.8–1 норм)
+
+  speechSynthesis.speak(utterance);
 }
 
 

@@ -4,6 +4,23 @@
   <meta charset="UTF-8">
   <title>Talksy Chat</title>
   <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+  .word {
+    cursor: pointer;
+    transition: 0.2s;
+  }
+
+  .word:hover {
+    color: #c084fc;
+  }
+
+  .word.saved {
+    color: #a855f7;
+    font-weight: 500;
+  }
+  </style>
+
 </head>
 
 <body class="bg-[#0f0c29] text-white h-[100dvh] flex flex-col md:flex-row">
@@ -76,19 +93,26 @@
   <button onclick="setMode('travel')" class="px-3 py-1 bg-white/10 rounded-xl hover:bg-white/20">
     Travel
   </button>
-  
+
   <button onclick="setMode('cafe')" class="px-3 py-1 bg-white/10 rounded-xl hover:bg-white/20">
     Cafe
   </button>
 
- <button id="levelBtn"
-  onclick="toggleLevelMenu()"
-  class="px-3 py-1 bg-white/10 rounded-xl text-sm hover:bg-purple-500 transition flex items-center gap-2">
+  <!-- ✅ КНОПКА LEVEL -->
+  <button id="levelBtn"
+    onclick="toggleLevelMenu()"
+    class="px-3 py-1 bg-purple-500/30 border border-purple-400 rounded-xl text-sm hover:bg-purple-500/50 transition flex items-center gap-2">
 
-  Level
-  <span id="levelLabel" class="font-bold">B</span>
+    Level
+    <span id="levelLabel" class="font-bold">B</span>
 
-</button>
+  </button>
+
+  <!-- ✅ КНОПКА MY WORDS (ОТДЕЛЬНО!) -->
+  <button onclick="openWords()"
+    class="px-3 py-1 bg-purple-500 hover:bg-purple-600 rounded-xl text-white">
+    My words
+  </button>
 
 </div>
 
@@ -107,6 +131,79 @@
     </div>
 
   </div>
+
+
+<div id="wordsScreen"
+  class="hidden fixed inset-0 bg-black/90 z-50 p-6 overflow-y-auto">
+
+  <div class="flex justify-between items-center mb-4">
+    <h2 class="text-xl font-bold">My Words</h2>
+    <button onclick="closeWords()" class="text-red-400">✕</button>
+  </div>
+
+<button onclick="openFlashcards()"
+  class="px-3 py-1 bg-purple-500 hover:bg-purple-600 rounded-xl text-white mb-4">
+  🧠 Flashcards
+</button>
+
+
+<div class="mb-4 p-3 bg-white/10 rounded-xl">
+
+  <div class="text-sm opacity-70 mb-1">Progress</div>
+
+  <div class="w-full bg-white/10 h-2 rounded-full overflow-hidden">
+    <div id="progressBar"
+      class="h-full bg-purple-500"
+      style="width: 0%"></div>
+  </div>
+
+  <div class="text-sm mt-2">
+    <span id="learnedCount">0</span> /
+    <span id="totalCount">0</span> words learned
+    (<span id="progressPercent">0</span>%)
+  </div>
+
+</div>
+
+
+  <!-- ⭐ ФИЛЬТР ВНУТРИ MY WORDS -->
+  <div class="flex gap-2 mb-4">
+    <button onclick="setWordsFilter('all')" class="px-3 py-1 bg-white/10 rounded-xl">
+      All (<span id="allCount">0</span>)
+    </button>
+
+    <button onclick="setWordsFilter('favorites')" class="px-3 py-1 bg-purple-500/40 border border-purple-400 rounded-xl">
+      ⭐ Favorites (<span id="favCount">0</span>)
+    </button>
+  </div>
+
+  <!-- СПИСОК СЛОВ -->
+  <div id="wordsList" class="space-y-2"></div>
+
+</div>
+
+<div id="flashcardsScreen"
+  class="hidden fixed inset-0 bg-black/95 z-50 flex flex-col items-center justify-center p-6">
+
+  <div class="text-white text-xl mb-6">Flashcards</div>
+
+  <!-- карточка -->
+  <div id="flashcard"
+    onclick="flipCard()"
+    class="w-72 h-44 bg-white/10 rounded-2xl flex items-center justify-center text-2xl text-center cursor-pointer transition">
+  </div>
+
+  <!-- кнопки -->
+  <div class="flex gap-4 mt-6">
+    <button onclick="prevCard()" class="px-4 py-2 bg-white/10 rounded-xl">◀</button>
+    <button onclick="nextCard()" class="px-4 py-2 bg-white/10 rounded-xl">▶</button>
+  </div>
+
+  <button onclick="closeFlashcards()" class="mt-6 text-red-400">
+    Close
+  </button>
+
+</div>
 
   <script src="script.js"></script>
 </body>
