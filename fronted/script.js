@@ -152,38 +152,35 @@ async function sendMessage() {
 
   try {
 
-   // =========================
-// 🎬 SCENARIOS (DYNAMIC)
-// =========================
-if (state.mode && state.mode !== "general" && scenarios[state.mode]) {
-
-  // 1. проверка ошибки
-  const correction = await getCorrection(text);
-
-  hideTyping();
-
-  if (correction && !correction.includes("NO_CORRECTION")) {
-    addMessage("ai", correction);
-    saveMessage("ai", correction);
-  }
-
-  // 2. ответ сценария (как живой диалог)
-  const reply = await getScenarioReply(state.mode, text);
-
-  addMessage("ai", reply);
-  saveMessage("ai", reply);
-
-  return;
-}
     // =========================
-    // 💬 GENERAL MODE (ВСЕГДА с исправлением)
+    // 🎬 SCENARIO MODE
+    // =========================
+    if (state.mode && state.mode !== "general" && scenarios[state.mode]) {
+
+      const correction = await getCorrection(text);
+      hideTyping();
+
+      if (correction && !correction.includes("NO_CORRECTION")) {
+        addMessage("ai", correction);
+        saveMessage("ai", correction);
+      } else {
+        const reply = await getScenarioReply(state.mode, text);
+        addMessage("ai", reply);
+        saveMessage("ai", reply);
+      }
+
+      return;
+    }
+
+    // =========================
+    // 💬 GENERAL MODE
     // =========================
     if (state.mode === "general") {
 
       const correction = await getCorrection(text);
       hideTyping();
 
-      if (correction) {
+      if (correction && !correction.includes("NO_CORRECTION")) {
         addMessage("ai", correction);
         saveMessage("ai", correction);
       }
@@ -197,7 +194,7 @@ if (state.mode && state.mode !== "general" && scenarios[state.mode]) {
     }
 
     // =========================
-    // 🤖 FALLBACK (если режим не выбран)
+    // 🤖 DEFAULT MODE
     // =========================
     const reply = await getAIReply(text);
     hideTyping();
@@ -348,6 +345,14 @@ DO NOT:
 // ===============================
 async function getAIReply(text) {
   try {
+
+    const chatHistory = JSON.parse(localStorage.getItem("chat_" + currentChatId)) || [];
+
+    // берем последние 6 сообщений
+    const lastMessages = chatHistory.slice(-6).map(m => ({
+      role: m.role === "ai" ? "assistant" : "user",
+      content: m.text
+    }));
     const state = getScenarioState();
 
     const res = await fetch("https://talksy1-production.up.railway.app/chat", {
@@ -370,6 +375,22 @@ Behavior rules:
 - At LEVEL A: speak like simple tutor, slow thinking, basic words
 - At LEVEL B: natural conversational English, friendly tone
 - At LEVEL C: native speaker, expressive, emotional, flexible grammar
+
+IMPORTANT:
+- ALWAYS remember the topic of conversation
+- NEVER ask obvious or repetitive questions
+- If the user already gave information → build on it
+- DO NOT ask questions that contradict context
+- If something is already known (e.g. tennis player → tennis), DO NOT ask about it again
+
+STYLE:
+- React naturally like a human
+- Show opinion, not just questions
+- Sometimes continue the topic instead of asking
+
+AVOID:
+- Avoid generic questions like "What do you think?"
+- Avoid dumb questions like "What sport does he play?"
 
 If mode = friends:
 - slang
@@ -418,6 +439,22 @@ Behavior rules:
 - At LEVEL A: speak like simple tutor, slow thinking, basic words
 - At LEVEL B: natural conversational English, friendly tone
 - At LEVEL C: native speaker, expressive, emotional, flexible grammar
+
+IMPORTANT:
+- ALWAYS remember the topic of conversation
+- NEVER ask obvious or repetitive questions
+- If the user already gave information → build on it
+- DO NOT ask questions that contradict context
+- If something is already known (e.g. tennis player → tennis), DO NOT ask about it again
+
+STYLE:
+- React naturally like a human
+- Show opinion, not just questions
+- Sometimes continue the topic instead of asking
+
+AVOID:
+- Avoid generic questions like "What do you think?"
+- Avoid dumb questions like "What sport does he play?"
 
 Topic: ${scenario.topic}
 Style: ${scenario.style}
