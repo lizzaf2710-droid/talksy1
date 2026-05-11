@@ -1,6 +1,5 @@
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, UploadFile, File
-from faster_whisper import WhisperModel
 import shutil
 import uuid
 import os
