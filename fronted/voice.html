@@ -181,7 +181,7 @@ let audioChunks = [];
 let isRecording = false;
 let selectedVoice =
   localStorage.getItem("selectedVoice") || "en-US-AriaNeural";
-let currentLevel = localStorage.getItem("selectedLevel");
+let currentLevel = localStorage.getItem("selectedLevel") || "A";
 
 if (!["A", "B", "C"].includes(currentLevel)) {
   currentLevel = "A";
@@ -249,13 +249,18 @@ async function sendAudio(blob) {
     body: formData
   });
 
+  if (!res.ok) {
+    console.error(await res.text());
+    return;
+  }
+
   const data = await res.json();
 
   const text = data.text || "I didn't hear that";
 
   console.log("TRANSCRIBED:", text);
 
-  const duration = Math.max(1, Math.ceil(text.split(" ").length / 2));
+  const duration = Math.max(1, Math.ceil(text.split(" ").length / 3));
 
   addVoiceMessage("user", duration, text);
   saveVoiceMessage("user", text, duration);
@@ -364,7 +369,7 @@ async function handleAIResponse(text) {
   try {
     // 1. Проверка ошибок
     const correctionRes = await fetch(
-      "https://talksy1-production.up.railway.app/chat",
+      "https://talksy1-production-2063.up.railway.app/chat",
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -418,7 +423,7 @@ Return ONLY this format.
     // =========================
     if (!hasErrors) {
       const replyRes = await fetch(
-        "https://talksy1-production.up.railway.app/chat",
+        "https://talksy1-production-2063.up.railway.app/chat",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
