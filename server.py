@@ -70,4 +70,8 @@ async def chat(data: ChatRequest):
         "message": {
             "content": f"That's interesting! You said: {user_text}"
         }
+<<<<<<< HEAD
     }
+=======
+    }
+>>>>>>> 1ea2a56198c42e3111fb41e0e95858cc19c11e00
