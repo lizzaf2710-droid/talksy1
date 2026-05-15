@@ -3,14 +3,20 @@ const cors = require("cors");
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+  origin: "*"
+}));
 app.use(express.json());
 
 app.get("/", (req, res) => {
   res.send("Talksy backend is running 🚀");
 });
 
-const API_KEY = process.env.API_KEY
+const API_KEY = process.env.GROQ_API_KEY;
+if (!API_KEY) {
+  console.error("GROQ_API_KEY is missing");
+}
+
 app.post("/chat", async (req, res) => {
   try {
     const response = await fetch(
