@@ -1,0 +1,1628 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Talksy Voice</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+  .playing {
+    background: #9333ea !important;
+    box-shadow: 0 0 20px rgba(147, 51, 234, 0.6);
+  }
+
+  .record-glow {
+    box-shadow:
+      0 0 20px rgba(168, 85, 247, 0.5),
+      0 0 40px rgba(168, 85, 247, 0.3);
+  }
+
+  .wave {
+    letter-spacing: 2px;
+    opacity: 0.8;
+    font-size: 12px;
+  }
+
+  .play-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: rgba(255,255,255,0.08);
+  backdrop-filter: blur(10px);
+  transition: 0.2s;
+}
+
+.play-btn:hover {
+  background: rgba(147, 51, 234, 0.25);
+  transform: scale(1.05);
+}
+
+.playing .play-btn {
+  background: rgba(147, 51, 234, 0.4);
+}
+
+.playing .progress {
+  background: linear-gradient(90deg, #a855f7, #d946ef);
+}
+
+.waveform {
+  position: relative;
+  height: 16px;
+}
+
+.progress {
+  transition: width 0.1s linear;
+}
+
+.saved-word {
+  color: #a855f7;
+  font-weight: 500;
+}
+
+.clickable-word {
+  display: inline;
+}
+
+</style>
+
+</head>
+
+<body class="text-white h-[100dvh] flex flex-col md:flex-row overflow-hidden
+bg-[#0a0f1f]">
+
+  <!-- SIDEBAR -->
+<div class="hidden md:flex w-64 bg-black/30 p-3 flex-col">
+  <button onclick="newChat()"
+    class="bg-purple-500 hover:bg-purple-600 text-white py-2 rounded-xl mb-3">
+    + New chat
+  </button>
+
+  <div id="chatList" class="flex-1 overflow-y-auto space-y-1"></div>
+</div>
+
+
+  <!-- MAIN -->
+  <div class="flex-1 flex flex-col h-[100dvh]">
+
+    <!-- HEADER -->
+    <div class="p-4 border-b border-white/10 backdrop-blur-xl bg-white/5 flex items-center gap-3">
+
+  <button onclick="goBack()" class="text-xl md:hidden">←</button>
+
+  <h1 class="text-lg md:text-xl font-bold">🎤 Voice Chat</h1>
+
+  <!-- кнопка голоса СЛЕВА -->
+  <button onclick="toggleVoiceMenu()"
+    class="bg-purple-500/40 hover:bg-purple-500/60 
+           text-white px-3 py-1 rounded-lg text-sm 
+           border border-purple-300/50 shadow-lg 
+           shadow-purple-500/30">
+    🎧 Voice
+  </button>
+
+  <button onclick="openVoiceDictionary()"
+  class="bg-purple-500/40 hover:bg-purple-500/60 
+         text-white px-3 py-1 rounded-lg text-sm 
+         border border-purple-300/50">
+  My Words
+</button>
+
+  <button id="levelButton" onclick="toggleLevelMenu()"
+  class="bg-purple-500/40 hover:bg-purple-500/60
+         text-white px-3 py-1 rounded-lg text-sm
+         border border-purple-300/50">
+  Level A
+</button>
+
+
+
+  <div class="text-sm opacity-60 ml-auto">Speak mode</div>
+
+</div>
+
+
+    <!-- CHAT -->
+    <div id="chat"
+  class="flex-1 p-4 md:p-6 space-y-4 overflow-y-auto">
+
+
+    </div>
+
+    <!-- VOICE INPUT (вместо текстового) -->
+    <div class="p-4 border-t border-white/10 backdrop-blur-xl bg-white/5 flex flex-col items-center gap-3">
+
+      <div id="status" class="text-sm opacity-60">
+        Hold to speak
+      </div>
+
+      <button id="recordBtn"
+  onmousedown="startRecording()"
+  onmouseup="stopRecording()"
+  ontouchstart="startRecording()"
+  ontouchend="stopRecording()"
+  class="record-glow w-20 h-20 rounded-full flex items-center justify-center
+bg-white/10 backdrop-blur-xl border border-white/20
+text-purple-300 shadow-2xl active:scale-95 transition duration-200">
+
+  <svg xmlns="http://www.w3.org/2000/svg"
+       class="w-8 h-8"
+       fill="none"
+       viewBox="0 0 24 24"
+       stroke="currentColor"
+       stroke-width="1.8">
+    <path stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z" />
+    <path stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M19 10v2a7 7 0 0 1-14 0v-2" />
+    <path stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M12 19v2" />
+  </svg>
+
+</button>
+
+
+    </div>
+
+  </div>
+
+
+
+<script>
+let currentChatId = localStorage.getItem("last_chat_id") || "main";
+let mediaRecorder;
+let audioChunks = [];
+let isRecording = false;
+let selectedVoice =
+  localStorage.getItem("selectedVoice") || "en-US-AriaNeural";
+let currentLevel = localStorage.getItem("selectedLevel");
+
+if (!["A", "B", "C"].includes(currentLevel)) {
+  currentLevel = "A";
+}
+let currentAudio = null;
+let voiceDictFilter = "all";
+
+
+function goBack() {
+  window.location.href = "chat.html";
+}
+
+async function startRecording() {
+  if (isRecording) return;
+  isRecording = true;
+
+  document.getElementById("status").innerText = "Listening...";
+
+  const btn = document.getElementById("recordBtn");
+  btn.classList.add("scale-110", "bg-purple-500/30");
+
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+  mediaRecorder = new MediaRecorder(stream);
+  audioChunks = [];
+
+  mediaRecorder.ondataavailable = e => {
+    audioChunks.push(e.data);
+  };
+
+  mediaRecorder.onstop = async () => {
+    const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
+
+    await sendAudio(audioBlob);
+  };
+
+  mediaRecorder.start();
+}
+
+
+function stopRecording() {
+  if (!isRecording) return;
+
+  isRecording = false;
+
+  document.getElementById("status").innerText = "Processing...";
+
+  const btn = document.getElementById("recordBtn");
+  btn.classList.remove("scale-110", "bg-purple-500/30");
+
+  if (mediaRecorder && mediaRecorder.state !== "inactive") {
+    mediaRecorder.stop();
+  }
+}
+
+
+async function sendAudio(blob) {
+  console.log("sending audio...");
+
+  const formData = new FormData();
+  formData.append("file", blob, "voice.webm");
+
+  const res = await fetch("https://talksy1-production-2063.up.railway.app/speech", {
+    method: "POST",
+    body: formData
+  });
+
+  const data = await res.json();
+
+  const text = data.text || "I didn't hear that";
+
+  console.log("TRANSCRIBED:", text);
+
+  const duration = Math.max(1, Math.ceil(text.split(" ").length / 2));
+
+  addVoiceMessage("user", duration, text);
+  saveVoiceMessage("user", text, duration);
+
+  handleAIResponse(text);
+}
+
+
+
+// 💬 сообщения как в основном чате
+function addVoiceMessage(role, duration, text = "Test message") {
+  const chat = document.getElementById("chat");
+
+    if (!chat) return;
+
+  const wrapper = document.createElement("div");
+  wrapper.className =
+    "flex " + (role === "user" ? "justify-end" : "justify-start");
+
+  const bubble = document.createElement("div");
+
+  bubble.className =
+    "inline-flex items-center gap-3 px-4 py-3 rounded-2xl max-w-[80%] cursor-pointer transition-all duration-300 shadow-lg " +
+    (role === "user"
+      ? "bg-gradient-to-r from-purple-500 to-fuchsia-600 text-white"
+      : "bg-white/10 backdrop-blur-xl text-white border border-white/10");
+
+  bubble.dataset.text = text;
+
+  bubble.audio = null;
+  bubble.isPlaying = false;
+  bubble.duration = duration;
+  bubble.progress = 0;  
+
+  bubble.innerHTML = `
+  <div class="w-[260px] max-w-full">
+
+    <!-- Верхняя строка -->
+    <div class="flex items-center gap-2">
+
+      <!-- Play -->
+      <button class="play-btn playBtn shrink-0 mt-3 -ml-2">
+        <svg class="w-4 h-4 icon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M8 5v14l11-7z"/>
+        </svg>
+      </button>
+
+      <!-- Waveform -->
+      <div class="waveform flex-1 cursor-pointer select-none">
+        <div class="relative w-full h-[14px] flex items-center">
+          <div class="absolute left-0 w-full h-[4px] bg-white/20 rounded-full"></div>
+          <div class="progress absolute left-0 h-[4px] bg-gradient-to-r from-purple-400 to-fuchsia-500 rounded-full w-0"></div>
+          <div class="thumb absolute w-3 h-3 bg-white rounded-full shadow-md -translate-x-1/2 left-0"></div>
+        </div>
+      </div>
+
+      <!-- CC справа -->
+      <button class="toggle-text text-xs opacity-70 hover:opacity-100 shrink-0">
+        CC
+      </button>
+    </div>
+
+    <!-- Время -->
+    <div class="time text-[10px] opacity-60 -mt-3 ml-7 text-left">
+      0:00 / 0:00
+    </div>
+
+    <!-- Расшифровка -->
+    <div class="message-text hidden mt-3 pt-3 border-t border-white/10
+                text-sm leading-relaxed break-words whitespace-normal opacity-90">
+      ${renderClickableWords(text)}
+    </div>
+
+  </div>
+`;
+
+  const toggleBtn = bubble.querySelector(".toggle-text");
+const textBlock = bubble.querySelector(".message-text");
+
+if (toggleBtn && textBlock) {
+  toggleBtn.onclick = (e) => {
+    e.stopPropagation();
+    textBlock.classList.toggle("hidden");
+  };
+}
+
+
+  // авто-скролл вниз
+  wrapper.appendChild(bubble);
+  chat.appendChild(wrapper);
+  chat.scrollTop = chat.scrollHeight;
+  
+  if (role === "ai") {
+  bubble.addEventListener("click", () => {
+    playTTS(text, bubble);
+  });
+}
+
+  return bubble;
+}
+
+// 🤖ответ
+async function handleAIResponse(text) {
+  console.log("INPUT:", text);
+
+  try {
+    // 1. Проверка ошибок
+    const correctionRes = await fetch(
+      "https://talksy1-production.up.railway.app/chat",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "llama3",
+          messages: [
+            {
+              role: "system",
+              content: `
+You are a strict English grammar checker.
+
+If mistakes exist:
+Correct: <fixed sentence>
+Explanation: <short explanation in Russian>
+
+If no mistakes:
+NO_ERRORS
+
+Return ONLY this format.
+`
+            },
+            { role: "user", content: text }
+          ]
+        })
+      }
+    );
+
+    const correctionData = await correctionRes.json();
+    const msg = correctionData.message?.content?.trim() || "NO_ERRORS";
+
+    const hasErrors = msg.startsWith("Correct:");
+
+    let correctedText = text;
+    let explanation = "";
+
+    if (hasErrors) {
+      const correctMatch = msg.match(/Correct:\s*(.+)/i);
+      const explanationMatch = msg.match(/Explanation:\s*(.+)/i);
+
+      correctedText = correctMatch
+        ? correctMatch[1].split("\n")[0].trim()
+        : text;
+
+      explanation = explanationMatch
+        ? explanationMatch[1].trim()
+        : "";
+    }
+
+    // =========================
+    // 2. ЕСЛИ ОШИБОК НЕТ
+    // =========================
+    if (!hasErrors) {
+      const replyRes = await fetch(
+        "https://talksy1-production.up.railway.app/chat",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: "llama3",
+            messages: [
+              {
+                role: "system",
+                content: `
+You are a strict English tutor.
+
+Current student level: ${getLevel()}
+
+Rules:
+- Level A: very simple words, short sentences (5–8 words), slow English
+- Level B: normal everyday English, medium sentences
+- Level C: advanced English, natural expressions, idioms allowed
+
+Always adapt ALL your responses to the level above.
+
+Reply in 1–2 sentences + 1 question.
+`
+              },
+              { role: "user", content: text }
+            ]
+          })
+        }
+      );
+
+      const replyData = await replyRes.json();
+
+      const reply =
+        replyData.message?.content?.trim() ||
+        "That's interesting! What happened next?";
+
+      const duration = Math.max(1, Math.ceil(reply.split(" ").length / 3));
+
+      const bubble = addVoiceMessage("ai", duration, reply);
+      saveVoiceMessage("ai", reply, duration);
+
+      playTTS(reply, bubble);
+      return;
+    }
+
+    // =========================
+    // 3. ЕСЛИ ЕСТЬ ОШИБКИ
+    // =========================
+
+    // 🔹 ТЕКСТОВОЕ СООБЩЕНИЕ (ТОЛЬКО исправление + объяснение)
+    const textMessage =
+      `💡 ${explanation}\n\n` +
+      `Corrected: ${correctedText}`;
+
+    addTextMessage("ai", textMessage);
+    saveVoiceMessage("ai", textMessage, 0, "text"); // можно хранить как текст
+
+    // 🔹 ОТДЕЛЬНО ГОЛОС — только продолжение диалога
+    const replyRes = await fetch(
+      "https://talksy1-production-2063.up.railway.app/chat",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "llama3",
+          messages: [
+            {
+              role: "system",
+              content: `
+You are a friendly English tutor.
+Level: ${getLevel()}
+Reply in 1–2 sentences + 1 question.
+`
+            },
+            { role: "user", content: correctedText }
+          ]
+        })
+      }
+    );
+
+    const replyData = await replyRes.json();
+
+    const reply =
+      replyData.message?.content?.trim() ||
+      "That's interesting! What happened next?";
+
+    const duration = Math.max(
+      1,
+      Math.ceil(reply.split(" ").length / 3)
+    );
+
+    const bubble = addVoiceMessage("ai", duration, reply);
+    saveVoiceMessage("ai", reply, duration);
+
+    playTTS(reply, bubble);
+
+  } catch (e) {
+    console.error("AI ERROR:", e);
+    addTextMessage("ai", "Something went wrong. Please try again.");
+  }
+}
+
+window.onload = function () {
+  initDefaultChat();
+  renderChats();
+
+  // Загружаем сохранённый голос
+  selectedVoice =
+    localStorage.getItem("selectedVoice") || "en-US-AriaNeural";
+
+  document.querySelectorAll('input[name="voice"]').forEach(r => {
+  r.checked = (r.value === selectedVoice);
+});
+
+  document.querySelectorAll('input[name="level"]').forEach(r => {
+  r.checked = (r.value === currentLevel);
+});
+
+
+  // Загружаем текущий чат
+  loadChat(currentChatId);
+
+  updateLevelButton();
+
+  flashIndex = 0;
+  flashFlipped = false;
+  updateProgress();
+
+  console.log("APP STARTED, VOICE:", selectedVoice);
+};
+
+
+function initDefaultChat() {
+  if (!localStorage.getItem("voice_chat_main")) {
+    localStorage.setItem("voice_chat_main", JSON.stringify([]));
+    localStorage.setItem("voice_chat_main_title", "Main chat");
+  }
+}
+
+function renderChats() {
+  const list = document.getElementById("chatList");
+  if (!list) return;
+
+  list.innerHTML = "";
+
+  const chats = [];
+
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+
+    if (key.startsWith("voice_chat_") && !key.endsWith("_title")) {
+      const id = key.replace("voice_chat_", "");
+      const title =
+        localStorage.getItem("voice_chat_" + id + "_title") || "Chat";
+
+      chats.push({ id, title });
+    }
+  }
+
+  chats.forEach(chat => {
+    const item = document.createElement("div");
+
+    item.className =
+      "flex justify-between items-center p-2 rounded-xl cursor-pointer transition " +
+      (chat.id === currentChatId
+        ? "bg-purple-500/40 border border-purple-400"
+        : "bg-white/10 hover:bg-white/20");
+
+    const span = document.createElement("span");
+    span.textContent = chat.title;
+    span.className = "flex-1";
+    span.onclick = () => loadChat(chat.id);
+    span.ondblclick = () => renameChat(chat.id);
+
+    const del = document.createElement("button");
+    del.textContent = "✕";
+    del.className = "ml-2 text-red-400";
+    del.onclick = (e) => {
+      e.stopPropagation();
+      deleteChat(chat.id);
+    };
+
+    item.appendChild(span);
+    item.appendChild(del);
+    list.appendChild(item);
+  });
+}
+
+function newChat() {
+  const id = Date.now().toString();
+
+  // создаём пустой чат
+  localStorage.setItem("voice_chat_" + id, JSON.stringify([]));
+  localStorage.setItem("voice_chat_" + id + "_title", "New chat");
+
+  // переключаемся на него
+  currentChatId = id;
+  localStorage.setItem("last_chat_id", id);
+
+  // очищаем экран
+  const chat = document.getElementById("chat");
+  if (chat) chat.innerHTML = "";
+
+  // обновляем список чатов слева
+  renderChats();
+}
+
+function loadChat(id) {
+  currentChatId = id;
+  localStorage.setItem("last_chat_id", id);
+  renderChats();
+
+  const chat = document.getElementById("chat");
+  chat.innerHTML = "";
+
+  const messages =
+    JSON.parse(localStorage.getItem("voice_chat_" + id)) || [];
+
+  messages.forEach(msg => {
+    if (msg.type === "text") {
+      addTextMessage(msg.role, msg.text);
+    } else {
+      addVoiceMessage(msg.role, msg.duration || 2, msg.text);
+    }
+  });
+}
+
+function saveVoiceMessage(role, text, duration = 2, type = "voice") {
+  const key = "voice_chat_" + currentChatId;
+  const messages = JSON.parse(localStorage.getItem(key)) || [];
+
+  messages.push({
+    role,
+    text,
+    duration,
+    type,
+    time: Date.now()
+  });
+
+  localStorage.setItem(key, JSON.stringify(messages));
+}
+
+function deleteChat(id) {
+  if (!confirm("Delete this chat?")) return;
+
+  localStorage.removeItem("voice_chat_" + id);
+  localStorage.removeItem("voice_chat_" + id + "_title");
+
+  loadChat("main");
+}
+
+function renameChat(id) {
+  const current =
+    localStorage.getItem("voice_chat_" + id + "_title") || "";
+
+  const name = prompt("Rename chat:", current);
+
+  if (name && name.trim()) {
+    localStorage.setItem(
+      "voice_chat_" + id + "_title",
+      name.trim()
+    );
+    renderChats();
+  }
+}
+
+
+
+
+
+async function playTTS(text, bubble) {
+  if (!bubble) return;
+
+  try {
+    // Останавливаем текущее аудио
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio.currentTime = 0;
+    }
+
+    // Сбрасываем все playing bubbles
+    document.querySelectorAll(".playing").forEach(el => {
+      el.classList.remove("playing");
+      const iconEl = el.querySelector(".icon");
+      if (iconEl) {
+        iconEl.innerHTML = `<path d="M8 5v14l11-7z"/>`;
+      }
+    });
+
+    // Элементы UI
+    const playBtn = bubble.querySelector(".playBtn");
+    const icon = bubble.querySelector(".icon");
+    const progress = bubble.querySelector(".progress");
+    const thumb = bubble.querySelector(".thumb");
+    const timeEl = bubble.querySelector(".time");
+    const waveform = bubble.querySelector(".waveform");
+
+    // Формат времени
+    function formatTime(sec) {
+      if (!isFinite(sec) || sec < 0) sec = 0;
+      sec = Math.floor(sec);
+      const m = Math.floor(sec / 60);
+      const s = sec % 60;
+      return `${m}:${String(s).padStart(2, "0")}`;
+    }
+
+    // Начальное состояние
+    if (timeEl) timeEl.textContent = "0:00 / ...";
+    if (progress) progress.style.width = "0%";
+    if (thumb) thumb.style.left = "0%";
+
+    // Получаем аудио
+    const res = await fetch("https://talksy1-production-2063.up.railway.app/tts", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        text,
+        voice: selectedVoice || "en-US-AriaNeural"
+      })
+    });
+
+    if (!res.ok) {
+      throw new Error("TTS request failed");
+    }
+
+    const blob = await res.blob();
+
+    // --- НАДЁЖНОЕ ОПРЕДЕЛЕНИЕ ДЛИТЕЛЬНОСТИ ---
+    // Используем Web Audio API, потому что audio.duration
+    // часто возвращает 0 для blob-файлов.
+    let duration = 0;
+
+    try {
+      const arrayBuffer = await blob.arrayBuffer();
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const decoded = await audioContext.decodeAudioData(arrayBuffer.slice(0));
+      duration = decoded.duration || 0;
+      await audioContext.close();
+    } catch (err) {
+      console.warn("Cannot decode duration:", err);
+    }
+
+    if (timeEl) {
+      timeEl.textContent = `0:00 / ${formatTime(duration)}`;
+    }
+
+    // Создаём Audio
+    const audioUrl = URL.createObjectURL(blob);
+    const audio = new Audio(audioUrl);
+    currentAudio = audio;
+
+    // Обновление UI
+    function update() {
+      if (!audio) return;
+
+      const current = audio.currentTime || 0;
+      const total = duration || audio.duration || 0;
+
+      const percent = total > 0
+        ? (current / total) * 100
+        : 0;
+
+      if (progress) progress.style.width = percent + "%";
+      if (thumb) thumb.style.left = percent + "%";
+
+      if (timeEl) {
+        timeEl.textContent =
+          `${formatTime(current)} / ${formatTime(total)}`;
+      }
+
+      if (!audio.paused && !audio.ended) {
+        requestAnimationFrame(update);
+      }
+    }
+
+    // Play
+    async function play() {
+      bubble.classList.add("playing");
+
+      if (icon) {
+        icon.innerHTML =
+          `<path d="M6 5h4v14H6zM14 5h4v14h-4z"/>`;
+      }
+
+      await audio.play();
+      requestAnimationFrame(update);
+    }
+
+    // Pause
+    function pause() {
+      audio.pause();
+      bubble.classList.remove("playing");
+
+      if (icon) {
+        icon.innerHTML = `<path d="M8 5v14l11-7z"/>`;
+      }
+    }
+
+    // Кнопка play/pause
+    if (playBtn) {
+      playBtn.onclick = async (e) => {
+        e.stopPropagation();
+
+        if (audio.paused) {
+          await play();
+        } else {
+          pause();
+        }
+      };
+    }
+
+    // Перемотка
+    if (waveform) {
+      waveform.onclick = (e) => {
+        const total = duration || audio.duration || 0;
+        if (!total) return;
+
+        const rect = waveform.getBoundingClientRect();
+        const p = Math.max(
+          0,
+          Math.min(1, (e.clientX - rect.left) / rect.width)
+        );
+
+        audio.currentTime = p * total;
+        requestAnimationFrame(update);
+      };
+    }
+
+    // Конец аудио
+    audio.onended = () => {
+      bubble.classList.remove("playing");
+
+      if (icon) {
+        icon.innerHTML = `<path d="M8 5v14l11-7z"/>`;
+      }
+
+      if (progress) progress.style.width = "0%";
+      if (thumb) thumb.style.left = "0%";
+
+      if (timeEl) {
+        timeEl.textContent =
+          `0:00 / ${formatTime(duration)}`;
+      }
+
+      URL.revokeObjectURL(audioUrl);
+    };
+
+    // Автозапуск
+    await play();
+
+  } catch (error) {
+    console.error("TTS ERROR:", error);
+  }
+}
+
+
+function toggleVoiceMenu() {
+  const menu = document.getElementById("voiceMenu");
+  menu.classList.toggle("hidden");
+}
+
+function setVoice(voice) {
+  selectedVoice = voice;
+  localStorage.setItem("selectedVoice", voice);
+
+  document.querySelectorAll('input[name="voice"]').forEach(r => {
+    r.checked = (r.value === voice);
+  });
+
+  console.log("VOICE CHANGED TO:", selectedVoice);
+}
+
+
+
+async function previewVoice(voice) {
+  setVoice(voice);
+
+  try {
+    const res = await fetch("https://talksy1-production-2063.up.railway.app/tts", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        text: "Hello! This is how I sound.",
+        voice: voice
+      })
+    });
+
+    const blob = await res.blob();
+    const audio = new Audio(URL.createObjectURL(blob));
+    audio.play();
+
+  } catch (e) {
+    console.error("Preview TTS error:", e);
+  }
+}
+
+function getLastChatId() {
+  return localStorage.getItem("last_chat_id") || "main";
+}
+
+
+function formatTime(sec) {
+  sec = Math.floor(sec || 0);
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${m}:${s < 10 ? "0" + s : s}`;
+}
+
+function stopAudio(bubble) {
+  if (!bubble) return;
+
+  bubble.isPlaying = false;
+
+  if (bubble.audio) {
+    bubble.audio.pause();
+    bubble.audio.currentTime = 0;
+  }
+
+  bubble.classList.remove("playing");
+
+  const fill = bubble.querySelector(".progress-bar div");
+  if (fill) fill.style.width = "0%";
+}
+
+  function renderClickableWords(text) {
+  const dict = JSON.parse(localStorage.getItem("voice_dictionary")) || [];
+  const learnedWords = new Set(dict.map(w => w.word));
+
+  return text
+    .split(/(\s+)/)
+    .map(part => {
+      if (/^\s+$/.test(part)) return part;
+
+      const clean = part.replace(/^[^a-zA-Z']+|[^a-zA-Z']+$/g, "");
+      if (!clean) return part;
+
+      const word = clean.toLowerCase();
+      const isKnown = learnedWords.has(word);
+
+      return `<span
+        class="clickable-word cursor-pointer transition
+        ${isKnown ? 'text-purple-400 font-semibold' : 'hover:text-purple-300'}"
+        data-word="${word}"
+        onclick="toggleVoiceWord(event, this)">
+        ${part}
+      </span>`;
+    })
+    .join("");
+}
+
+
+
+
+async function toggleVoiceWord(event, el) {
+  event.stopPropagation();
+
+  const word = el.dataset.word;
+  if (!word || word.length < 2) return;
+
+  let dict =
+    JSON.parse(localStorage.getItem("voice_dictionary")) || [];
+
+  // Если слово уже есть в словаре
+  const existing = dict.find(w => w.word === word);
+
+  if (existing) {
+    // Подсветка
+    el.classList.add("text-purple-400", "font-semibold");
+
+    // Показать перевод при повторном клике
+    alert(`${existing.word} → ${existing.translation}`);
+    return;
+  }
+
+  // Временно показываем загрузку
+  el.classList.add("text-purple-400", "font-semibold");
+  el.title = "Переводится...";
+
+  // Получаем перевод
+  const translation = await translateVoiceWord(word);
+
+  const item = {
+  word,
+  translation,
+  time: Date.now(),
+  learned: false,
+  favorite: false
+};
+
+  dict.push(item);
+
+  localStorage.setItem(
+    "voice_dictionary",
+    JSON.stringify(dict)
+  );
+
+  // Показываем перевод
+  el.title = translation;
+  alert(`${word} → ${translation}`);
+
+  // Обновляем словарь, если открыт
+  if (!document.getElementById("voiceDictionaryScreen")
+        .classList.contains("hidden")) {
+    renderVoiceDictionary();
+  }
+
+  console.log("Saved:", item);
+}
+
+
+// Кэш переводов — как в chat.html
+let voiceTranslationCache = {};
+
+// Перевод слова через тот же AI endpoint, что используется в обычном чате
+async function translateVoiceWord(word) {
+  // Если перевод уже есть в кэше — сразу возвращаем
+  if (voiceTranslationCache[word]) {
+    return voiceTranslationCache[word];
+  }
+
+  try {
+    const res = await fetch("https://talksy1-production-2063.up.railway.app/chat", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: "llama3",
+        messages: [
+          {
+            role: "system",
+            content:
+              "Translate this English word to Russian. Answer ONLY with the Russian translation."
+          },
+          {
+            role: "user",
+            content: word
+          }
+        ]
+      })
+    });
+
+    const data = await res.json();
+
+    const translation =
+      data.message?.content?.trim() || word;
+
+    // Сохраняем в кэш
+    voiceTranslationCache[word] = translation;
+
+    return translation;
+  } catch (e) {
+    console.error("Translate error:", e);
+    return word;
+  }
+}
+
+
+
+
+
+function openVoiceDictionary() {
+  document.getElementById("voiceDictionaryScreen").classList.remove("hidden");
+  renderVoiceDictionary();
+}
+
+function closeVoiceDictionary() {
+  document.getElementById("voiceDictionaryScreen").classList.add("hidden");
+}
+
+
+function renderVoiceDictionary() {
+  const list = document.getElementById("voiceWordsList");
+  if (!list) return;
+
+  list.innerHTML = "";
+
+  // 1. берём ВСЕ слова
+  let allWords = JSON.parse(localStorage.getItem("voice_dictionary")) || [];
+
+  // 2. нормализуем (на всякий случай)
+  allWords = allWords.map(w => ({
+    word: w.word,
+    translation: w.translation,
+    time: w.time || Date.now(),
+    learned: w.learned ?? false,
+    favorite: w.favorite ?? false
+  }));
+
+  // 3. считаем счётчики (ВСЕГДА от полного списка)
+  const allCount = allWords.length;
+  const favCount = allWords.filter(w => w.favorite).length;
+
+  const allEl = document.getElementById("allCount");
+  const favEl = document.getElementById("favCount");
+
+  if (allEl) allEl.textContent = allCount;
+  if (favEl) favEl.textContent = favCount;
+
+  // 4. применяем фильтр
+  let filteredWords = allWords;
+
+  if (voiceDictFilter === "favorites") {
+    filteredWords = allWords.filter(w => w.favorite);
+  }
+
+  // 5. если пусто
+  if (filteredWords.length === 0) {
+    list.innerHTML = "<div class='opacity-60'>No words yet</div>";
+    return;
+  }
+
+  // 6. рендер карточек
+  filteredWords.forEach(item => {
+    const el = document.createElement("div");
+
+    el.className =
+      "flex justify-between items-center bg-white/10 p-3 rounded-xl";
+
+    el.innerHTML = `
+      <div>
+        <div class="font-bold">${item.word}</div>
+        <div class="text-sm opacity-70">${item.translation}</div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <button onclick="toggleVoiceFavorite('${item.word}')"
+                class="text-xl">
+          ${item.favorite ? "⭐" : "○"}
+        </button>
+
+        <button onclick="removeVoiceWord('${item.word}')"
+                class="text-red-400 text-lg">
+          ✕
+        </button>
+      </div>
+    `;
+
+    list.appendChild(el);
+  });
+}
+
+
+function removeVoiceWord(word) {
+  let dict =
+    JSON.parse(localStorage.getItem("voice_dictionary")) || [];
+
+  // удаляем слово
+  dict = dict.filter(item => item.word !== word);
+
+  // сохраняем
+  localStorage.setItem(
+    "voice_dictionary",
+    JSON.stringify(dict)
+  );
+
+  // обновляем экран
+  renderVoiceDictionary();
+}
+
+function toggleVoiceFavorite(word) {
+  let dict =
+    JSON.parse(localStorage.getItem("voice_dictionary")) || [];
+
+  const item = dict.find(w => w.word === word);
+  if (!item) return;
+
+  // переключаем избранное
+  item.favorite = !item.favorite;
+
+  // сохраняем
+  localStorage.setItem(
+    "voice_dictionary",
+    JSON.stringify(dict)
+  );
+
+  // обновляем экран
+  renderVoiceDictionary();
+}
+
+function renderFlashcard() {
+  const card = document.getElementById("voiceFlashcard");
+
+  const studyWords = getStudyWords();
+
+  if (!studyWords.length) {
+    card.innerHTML = "🎉 You learned all words!";
+    return;
+  }
+
+  const word = studyWords[flashIndex];
+
+  if (!flashFlipped) {
+    card.innerHTML = `<div>${word.word}</div>`;
+  } else {
+    card.innerHTML = `
+      <div>${word.translation || "..."}</div>
+
+      <div class="flex gap-6 mt-5 justify-center text-2xl">
+
+        <button onclick="markDontKnow(event)">
+          ○ ✖
+        </button>
+
+        <button onclick="markKnow(event)">
+          ○ ✔
+        </button>
+
+      </div>
+    `;
+  }
+}
+
+
+
+function markKnow(e) {
+  e.stopPropagation();
+
+  const studyWords = getStudyWords();
+  const word = studyWords[flashIndex];
+
+  let words = getVoiceWords();
+
+  const updated = words.map(w =>
+    w.word === word.word ? { ...w, learned: true } : w
+  );
+
+  localStorage.setItem("voice_dictionary", JSON.stringify(updated));
+
+  flashFlipped = false;
+
+  renderFlashcard();
+  updateProgress();
+}
+
+
+function markDontKnow(e) {
+  e.stopPropagation();
+
+  const studyWords = getStudyWords();
+  const word = studyWords[flashIndex];
+
+  let words = getVoiceWords();
+
+  const updated = words.map(w =>
+    w.word === word.word ? { ...w, learned: false } : w
+  );
+
+  localStorage.setItem("voice_dictionary", JSON.stringify(updated));
+
+  flashFlipped = false;
+
+  renderFlashcard();
+  updateProgress();
+}
+
+
+
+
+function nextCard() {
+  const studyWords = getStudyWords();
+  if (!studyWords.length) return;
+
+  flashIndex = Math.min(flashIndex, studyWords.length - 1);
+
+  flashIndex = (flashIndex + 1) % studyWords.length;
+  flashFlipped = false;
+
+  renderFlashcard();
+}
+
+
+
+
+function openFlashcards() {
+  document.getElementById("voiceFlashcardsScreen").classList.remove("hidden");
+  flashIndex = 0;
+  flashFlipped = false;
+  renderFlashcard();
+  updateProgress();
+}
+
+let flashIndex = 0;
+let flashFlipped = false;
+
+function flipVoiceCard() {
+  flashFlipped = !flashFlipped;
+  renderFlashcard();
+}
+
+function prevVoiceCard() {
+  const words = getSavedWords();
+  if (!words.length) return;
+
+  flashIndex = (flashIndex - 1 + words.length) % words.length;
+  flashFlipped = false;
+  renderFlashcard();
+}
+
+function closeVoiceFlashcards() {
+  document.getElementById("voiceFlashcardsScreen").classList.add("hidden");
+}
+
+function updateProgress() {
+  const words = getSavedWords();
+  const learned = words.filter(w => w.learned).length;
+
+  const percent = words.length
+    ? Math.round((learned / words.length) * 100)
+    : 0;
+
+  const bar = document.getElementById("voiceProgressBar");
+  const learnedEl = document.getElementById("voiceLearnedCount");
+  const totalEl = document.getElementById("voiceTotalCount");
+  const percentEl = document.getElementById("voiceProgressPercent");
+
+  if (bar) bar.style.width = percent + "%";
+  if (learnedEl) learnedEl.textContent = learned;
+  if (totalEl) totalEl.textContent = words.length;
+  if (percentEl) percentEl.textContent = percent;
+}
+
+
+function getVoiceWords() {
+  let words = JSON.parse(localStorage.getItem("voice_dictionary")) || [];
+
+  // нормализация (фикс старых записей)
+  words = words.map(w => ({
+    word: w.word,
+    translation: w.translation,
+    time: w.time || Date.now(),
+    learned: w.learned ?? false,
+    favorite: w.favorite ?? false
+  }));
+
+  return words;
+}
+
+
+function getSavedWords() {
+  return getVoiceWords();
+}
+
+function getStudyWords() {
+  return getVoiceWords();
+}
+
+
+
+function setVoiceDictFilter(type) {
+  voiceDictFilter = type;
+  renderVoiceDictionary();
+}
+
+
+
+function updateVoiceDictCounters(dict) {
+  const all = dict.length;
+  const fav = dict.filter(w => w.favorite).length;
+
+  const allEl = document.getElementById("allCount");
+  const favEl = document.getElementById("favCount");
+
+  if (allEl) allEl.textContent = all;
+  if (favEl) favEl.textContent = fav;
+}
+
+
+function addTextMessage(role, text) {
+  const chat = document.getElementById("chat");
+  if (!chat) return;
+
+  const wrapper = document.createElement("div");
+  wrapper.className =
+    "flex " + (role === "user" ? "justify-end" : "justify-start");
+
+  const bubble = document.createElement("div");
+  bubble.className =
+    "max-w-[80%] px-4 py-3 rounded-2xl whitespace-pre-wrap shadow-lg " +
+    (role === "user"
+      ? "bg-gradient-to-r from-purple-500 to-fuchsia-600 text-white"
+      : "bg-white/10 backdrop-blur-xl text-white border border-white/10");
+
+  bubble.textContent = text;
+
+  wrapper.appendChild(bubble);
+  chat.appendChild(wrapper);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+
+
+function setLevel(level) {
+  currentLevel = level;
+  localStorage.setItem("selectedLevel", level);
+
+  document.querySelectorAll('input[name="level"]').forEach(r => {
+    r.checked = (r.value === level);
+  });
+
+  updateLevelButton();
+
+  console.log("LEVEL CHANGED TO:", level);
+}
+
+
+
+function toggleLevelMenu() {
+  document.getElementById("levelMenu").classList.toggle("hidden");
+}
+
+
+function updateLevelButton() {
+  const btn = document.getElementById("levelButton");
+  if (btn) {
+    btn.textContent = `Level ${currentLevel}`;
+  }
+}
+
+
+function getLevel() {
+  return localStorage.getItem("selectedLevel") || "A";
+}
+
+</script>
+
+
+<div id="voiceMenu"
+  class="hidden absolute right-4 top-16 bg-black/90 
+         p-4 rounded-xl w-60 space-y-3 border border-white/10">
+
+  <div class="text-sm opacity-70 mb-2">Choose voice</div>
+
+  <!-- ARIA -->
+  <div class="flex items-center justify-between">
+    <label class="flex items-center gap-2 cursor-pointer">
+      <input type="radio" name="voice"
+        value="en-US-AriaNeural"
+        onclick="setVoice('en-US-AriaNeural')">
+      <span>Aria (female)</span>
+    </label>
+
+    <button onclick="previewVoice('en-US-AriaNeural')"
+  class="w-8 h-8 flex items-center justify-center rounded-full
+         bg-white/10 hover:bg-purple-500/30
+         border border-white/10 hover:border-purple-400/40
+         transition group">
+  
+  <svg class="w-4 h-4 text-purple-300 group-hover:text-white"
+       viewBox="0 0 24 24"
+       fill="currentColor">
+    <path d="M8 5v14l11-7z"/>
+  </svg>
+
+</button>
+
+  </div>
+
+  <!-- GUY -->
+  <div class="flex items-center justify-between">
+    <label class="flex items-center gap-2 cursor-pointer">
+      <input type="radio" name="voice"
+        value="en-US-GuyNeural"
+        onclick="setVoice('en-US-GuyNeural')">
+      <span>Guy (male)</span>
+    </label>
+
+    <button onclick="previewVoice('en-US-GuyNeural')"
+  class="w-8 h-8 flex items-center justify-center rounded-full
+         bg-white/10 hover:bg-purple-500/30
+         border border-white/10 hover:border-purple-400/40
+         transition group">
+  
+  <svg class="w-4 h-4 text-purple-300 group-hover:text-white"
+       viewBox="0 0 24 24"
+       fill="currentColor">
+    <path d="M8 5v14l11-7z"/>
+  </svg>
+
+</button>
+
+  </div>
+
+  <!-- JENNY -->
+  <div class="flex items-center justify-between">
+    <label class="flex items-center gap-2 cursor-pointer">
+      <input type="radio" name="voice"
+        value="en-US-JennyNeural"
+        onclick="setVoice('en-US-JennyNeural')">
+      <span>Jenny (female)</span>
+    </label>
+
+    <button onclick="previewVoice('en-US-JennyNeural')"
+  class="w-8 h-8 flex items-center justify-center rounded-full
+         bg-white/10 hover:bg-purple-500/30
+         border border-white/10 hover:border-purple-400/40
+         transition group">
+  
+  <svg class="w-4 h-4 text-purple-300 group-hover:text-white"
+       viewBox="0 0 24 24"
+       fill="currentColor">
+    <path d="M8 5v14l11-7z"/>
+  </svg>
+
+</button>
+
+  </div>   
+
+</div>
+
+<div id="voiceDictionaryScreen"
+  class="hidden fixed inset-0 bg-black/90 z-50 p-6 overflow-y-auto">
+
+  <div class="flex justify-between items-center mb-4">
+    <h2 class="text-xl font-bold">Voice Dictionary</h2>
+    <button onclick="closeVoiceDictionary()" class="text-red-400">✕</button>
+  </div>
+
+  <button onclick="openFlashcards()"
+  class="px-3 py-1 bg-purple-500 hover:bg-purple-600 rounded-xl text-white mb-4">
+  🧠 Flashcards
+</button>
+
+<div class="mb-4 p-3 bg-white/10 rounded-xl">
+  <div class="text-sm opacity-70 mb-1">Progress</div>
+
+  <div class="w-full bg-white/10 h-2 rounded-full overflow-hidden">
+    <div id="voiceProgressBar"
+      class="h-full bg-purple-500"
+      style="width: 0%"></div>
+  </div>
+
+  <div class="text-sm mt-2">
+    <span id="voiceLearnedCount">0</span> /
+    <span id="voiceTotalCount">0</span> words learned
+    (<span id="voiceProgressPercent">0</span>%)
+  </div>
+</div>
+
+  <div class="flex gap-2 mb-4">
+  <button id="filterAllBtn"
+    onclick="setVoiceDictFilter('all')"
+    class="px-3 py-1 rounded-xl bg-white/10 hover:bg-white/20">
+    All (<span id="allCount">0</span>)
+  </button>
+
+  <button id="filterFavBtn"
+    onclick="setVoiceDictFilter('favorites')"
+    class="px-3 py-1 rounded-xl bg-white/10 hover:bg-white/20">
+    ⭐ Favorites (<span id="favCount">0</span>)
+  </button>
+</div>
+
+  <div id="voiceWordsList" class="space-y-2"></div>
+</div>
+
+  <div id="voiceFlashcardsScreen"
+  class="hidden fixed inset-0 bg-black/95 z-50 flex flex-col items-center justify-center p-6">
+
+  <div class="text-white text-xl mb-6">Voice Flashcards</div>
+
+  <div id="voiceFlashcard"
+    onclick="flipVoiceCard()"
+    class="w-72 h-44 bg-white/10 rounded-2xl flex items-center justify-center text-2xl text-center cursor-pointer transition">
+  </div>
+
+  <div class="flex gap-4 mt-6">
+    <button onclick="prevVoiceCard()" class="px-4 py-2 bg-white/10 rounded-xl">◀</button>
+    <button onclick="nextVoiceCard()" class="px-4 py-2 bg-white/10 rounded-xl">▶</button>
+  </div>
+
+  <button onclick="closeVoiceFlashcards()" class="mt-6 text-red-400">
+    Close
+  </button>
+</div>
+
+
+
+<div id="levelMenu"
+  class="hidden absolute right-4 top-32 bg-black/90
+         p-4 rounded-xl w-40 space-y-3 border border-white/10 z-50">
+
+  <div class="text-sm opacity-70 mb-2">Choose level</div>
+
+  <label class="flex items-center gap-2 cursor-pointer">
+    <input type="radio" name="level" value="A" onclick="setLevel('A')">
+    <span>A-Beginner</span>
+  </label>
+
+  <label class="flex items-center gap-2 cursor-pointer">
+    <input type="radio" name="level" value="B" onclick="setLevel('B')">
+    <span>B-Intermediate</span>
+  </label>
+
+  <label class="flex items-center gap-2 cursor-pointer">
+    <input type="radio" name="level" value="C" onclick="setLevel('C')">
+    <span>C-Advanced</span>
+  </label>
+</div>
+
+
+
+</body>
+</html>

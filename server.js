@@ -3,14 +3,20 @@ const cors = require("cors");
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+  origin: "*"
+}));
 app.use(express.json());
 
 app.get("/", (req, res) => {
   res.send("Talksy backend is running 🚀");
 });
 
-const API_KEY = process.env.API_KEY
+const API_KEY = process.env.GROQ_API_KEY;
+if (!API_KEY) {
+  console.error("GROQ_API_KEY is missing");
+}
+
 app.post("/chat", async (req, res) => {
   try {
     const response = await fetch(
@@ -42,6 +48,8 @@ app.post("/chat", async (req, res) => {
   }
 });
 
-app.listen(3000, () => {
-  console.log("Server running on http://localhost:3000");
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, "0.0.0.0", () => {
+  console.log("Server running on port", PORT);
 });

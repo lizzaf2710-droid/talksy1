@@ -302,7 +302,7 @@ function hideTyping() {
 // ===============================
 async function getCorrection(text) {
   try {
-    const res = await fetch("https://talksy1-production.up.railway.app/chat", {
+    const res = await fetch("https://talksy-node-production.up.railway.app/chat", {
 
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -355,7 +355,7 @@ async function getAIReply(text) {
     }));
     const state = getScenarioState();
 
-    const res = await fetch("https://talksy1-production.up.railway.app/chat", {
+    const res = await fetch("https://talksy-node-production.up.railway.app/chat", {
 
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -415,7 +415,7 @@ If mode = friends:
 async function getScenarioReply(mode, userText) {
   const scenario = scenarios[mode];
 
-  const res = await fetch("https://talksy1-production.up.railway.app/chat", {
+  const res = await fetch("https://talksy-node-production.up.railway.app/chat", {
 
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -562,10 +562,10 @@ function renderChats() {
     const isActive = chat.id === currentChatId;
 
     item.className =
-      "flex justify-between items-center p-2 rounded-xl mb-2 cursor-pointer transition " +
-      (isActive
-        ? "bg-purple-500/30 border border-purple-400"
-        : "bg-white/10 hover:bg-white/20");
+  "flex justify-between items-center p-2 rounded-xl mb-2 cursor-pointer transition " +
+  (chat.id === currentChatId
+    ? "bg-purple-500/40 border border-purple-400"
+    : "bg-white/10 hover:bg-white/20");
 
     const span = document.createElement("span");
     span.textContent = chat.title;
@@ -604,6 +604,8 @@ function newChat() {
 
 // ===============================
 function deleteChat(id) {
+  if (!confirm("Delete this chat?")) return;
+
   localStorage.removeItem("chat_" + id);
   localStorage.removeItem("chat_" + id + "_title");
 
@@ -614,12 +616,15 @@ function deleteChat(id) {
 
 // ===============================
 function renameChat(id) {
-  const name = prompt("Rename chat:");
-  if (name) {
-    localStorage.setItem("chat_" + id + "_title", name);
+  const current = localStorage.getItem("chat_" + id + "_title") || "";
+  const name = prompt("Rename chat:", current);
+
+  if (name && name.trim()) {
+    localStorage.setItem("chat_" + id + "_title", name.trim());
     renderChats();
   }
 }
+
 
 function toggleSidebar() {
   const sidebar = document.getElementById("sidebar");
@@ -745,7 +750,7 @@ async function translateWord(word) {
   if (translationCache[word]) return translationCache[word];
 
   try {
-    const res = await fetch("https://talksy1-production.up.railway.app/chat", {
+    const res = await fetch("https://talksy-node-production.up.railway.app/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -1036,6 +1041,12 @@ function speakWord(word) {
 }
 
 
+window.openVoice = function () {
+  window.location.href = "./voice.html";
+};
+
+
+
 // ===============================
 window.setMode = setMode;
 window.newChat = newChat;
@@ -1043,3 +1054,4 @@ window.sendMessage = sendMessage;
 window.loadChat = loadChat;
 window.deleteChat = deleteChat;
 window.renameChat = renameChat;
+window.openVoice = openVoice;
