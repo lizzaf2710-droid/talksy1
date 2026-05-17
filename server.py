@@ -12,12 +12,11 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=["*"],   # разрешить все домены
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 # CORS
 app.add_middleware(
