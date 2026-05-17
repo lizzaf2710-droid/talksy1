@@ -27,7 +27,7 @@ def root():
 # Speech-to-text (заглушка)
 # ----------------------
 @app.post("/speech")
-async def speech():
+async def speech(file: UploadFile = File(...)):
     return {"text": "Hello, how are you?"}
 
 # ----------------------
