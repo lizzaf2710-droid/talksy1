@@ -8,13 +8,15 @@ import os
 
 app = FastAPI()
 
+# CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # разрешить все домены
+    allow_origins=["*"],
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # ----------------------
 # Root
@@ -23,6 +25,7 @@ app.add_middleware(
 def root():
     return {"ok": True}
 
+
 # ----------------------
 # Speech-to-text (заглушка)
 # ----------------------
@@ -30,12 +33,14 @@ def root():
 async def speech(file: UploadFile = File(...)):
     return {"text": "Hello, how are you?"}
 
+
 # ----------------------
 # TTS
 # ----------------------
 class TTSRequest(BaseModel):
     text: str
     voice: str = "en-US-AriaNeural"
+
 
 @app.post("/tts")
 async def tts(data: TTSRequest):
@@ -50,6 +55,7 @@ async def tts(data: TTSRequest):
         filename="speech.mp3"
     )
 
+
 # ----------------------
 # Chat
 # ----------------------
@@ -57,9 +63,11 @@ class Message(BaseModel):
     role: str
     content: str
 
+
 class ChatRequest(BaseModel):
     model: str
     messages: list[Message]
+
 
 @app.post("/chat")
 async def chat(data: ChatRequest):
@@ -69,3 +77,4 @@ async def chat(data: ChatRequest):
         "message": {
             "content": f"That's interesting! You said: {user_text}"
         }
+    }
