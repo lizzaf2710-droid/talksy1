@@ -1,8 +1,4 @@
 fastapi
 uvicorn
 python-multipart
-<<<<<<< HEAD
 edge-tts
-=======
-edge-tts
->>>>>>> 1ea2a56198c42e3111fb41e0e95858cc19c11e00
