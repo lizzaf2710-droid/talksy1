@@ -244,7 +244,7 @@ async function sendAudio(blob) {
   const formData = new FormData();
   formData.append("file", blob, "voice.webm");
 
-  const res = await fetch("https://talksy1-production-2063.up.railway.app/speech", {
+  const res = await fetch("https://web-production-33e9e.up.railway.app/speech", {
     method: "POST",
     body: formData
   });
@@ -369,7 +369,7 @@ async function handleAIResponse(text) {
   try {
     // 1. Проверка ошибок
     const correctionRes = await fetch(
-      "https://talksy1-production-2063.up.railway.app/chat",
+      "https://web-production-33e9e.up.railway.app/chat",
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -423,7 +423,7 @@ Return ONLY this format.
     // =========================
     if (!hasErrors) {
       const replyRes = await fetch(
-        "https://talksy1-production-2063.up.railway.app/chat",
+        "https://web-production-33e9e.up.railway.app/chat",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -482,7 +482,7 @@ Reply in 1–2 sentences + 1 question.
 
     // 🔹 ОТДЕЛЬНО ГОЛОС — только продолжение диалога
     const replyRes = await fetch(
-      "https://talksy1-production-2063.up.railway.app/chat",
+      "https://web-production-33e9e.up.railway.app/chat",
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -735,7 +735,7 @@ async function playTTS(text, bubble) {
     if (thumb) thumb.style.left = "0%";
 
     // Получаем аудио
-    const res = await fetch("https://talksy1-production-2063.up.railway.app/tts", {
+    const res = await fetch("https://web-production-33e9e.up.railway.app/tts", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -903,7 +903,7 @@ async function previewVoice(voice) {
   setVoice(voice);
 
   try {
-    const res = await fetch("https://talksy1-production-2063.up.railway.app/tts", {
+    const res = await fetch("https://web-production-33e9e.up.railway.app/tts", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -1048,7 +1048,7 @@ async function translateVoiceWord(word) {
   }
 
   try {
-    const res = await fetch("https://talksy1-production-2063.up.railway.app/chat", {
+    const res = await fetch("https://web-production-33e9e.up.railway.app/chat", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
