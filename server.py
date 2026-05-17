@@ -16,15 +16,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 # ----------------------
 # Root
 # ----------------------
@@ -78,8 +69,3 @@ async def chat(data: ChatRequest):
         "message": {
             "content": f"That's interesting! You said: {user_text}"
         }
-<<<<<<< HEAD
-    }
-=======
-    }
->>>>>>> 1ea2a56198c42e3111fb41e0e95858cc19c11e00
