@@ -118,13 +118,6 @@ bg-[#0a0f1f]">
   Level A
 </button>
 
-
-
-  <div class="text-sm opacity-60 ml-auto">Speak mode</div>
-
-</div>
-
-
 <div class="flex gap-2 p-3 overflow-x-auto">
 
   <button onclick="setVoiceMode('general')"
@@ -153,6 +146,12 @@ bg-[#0a0f1f]">
   </button>
 
 </div>
+
+  <div class="text-sm opacity-60 ml-auto">Speak mode</div>
+
+</div>
+
+
 
 
     <!-- CHAT -->
@@ -220,6 +219,9 @@ let currentAudio = null;
 let voiceDictFilter = "all";
 
 const scenarios = {
+  general: {
+    system: "You are a helpful English tutor. Speak naturally."
+  },
   interview: {
     system: "You are an interviewer. Ask structured interview questions."
   },
@@ -1479,6 +1481,23 @@ function setLevel(level) {
   updateLevelButton();
 
   console.log("LEVEL CHANGED TO:", level);
+
+  // 🔥 ВАЖНО: пересобираем текущий чат БЕЗ потери данных
+  const chat = document.getElementById("chat");
+  if (!chat) return;
+
+  const messages =
+    JSON.parse(localStorage.getItem("voice_chat_" + currentChatId)) || [];
+
+  chat.innerHTML = "";
+
+  messages.forEach(msg => {
+    if (msg.type === "text") {
+      addTextMessage(msg.role, msg.text);
+    } else {
+      addVoiceMessage(msg.role, msg.duration || 2, msg.text);
+    }
+  });
 }
 
 
@@ -1502,25 +1521,81 @@ function getLevel() {
 
 
 
+function getSystemPrompt(mode) {
+  return `
+${scenarios[mode]?.system || "You are a helpful assistant"}
+
+IMPORTANT LEVEL RULE:
+Current student level: ${getLevel()}
+
+- Level A: very simple words, 5–8 words max, slow English
+- Level B: normal everyday English
+- Level C: advanced natural English, idioms allowed
+
+You MUST strictly follow the level rules.
+`;
+}
+
+
 
 
 
 async function speakAI(text) {
-  const res = await fetch("https://talksy-node-production.up.railway.app/tts", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      text,
-      voice: "en-US-AriaNeural"
-    })
-  });
+  try {
+    if (!text) return;
 
-  const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
+    // 🔇 останавливаем предыдущее аудио
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio.currentTime = 0;
+    }
 
-  const audio = new Audio(url);
-  await audio.play();
+    const res = await fetch(
+      "https://web-production-33e9e.up.railway.app/tts",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          text,
+          voice: selectedVoice || "en-US-AriaNeural"
+        })
+      }
+    );
+
+    // ❗ защита от 404 / HTML / ошибок сервера
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error("TTS ERROR:", errText);
+      return;
+    }
+
+    const blob = await res.blob();
+
+    // ❗ проверка что это реально audio
+    if (!blob || blob.size === 0) {
+      console.error("Empty audio blob");
+      return;
+    }
+
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+
+    currentAudio = audio;
+
+    audio.onended = () => {
+      URL.revokeObjectURL(url);
+      currentAudio = null;
+    };
+
+    await audio.play();
+
+  } catch (error) {
+    console.error("speakAI crashed:", error);
+  }
 }
+
 
 
 
@@ -1555,7 +1630,7 @@ async function setVoiceMode(mode) {
   const chat = document.getElementById("chat");
   if (chat) chat.innerHTML = "";
 
-  await speakAI(`Scenario ${mode} started`);
+  await speakAI(`Scenario ${mode} started. Level ${getLevel()}`);
 
   const first = await getScenarioReply(mode, "");
   const bubble = addVoiceMessage("ai", 3, first);
@@ -1581,7 +1656,7 @@ async function getScenarioReply(mode, userText) {
       messages: [
         {
           role: "system",
-          content: scenarios[mode]?.system || "You are a helpful assistant"
+          content: getSystemPrompt(mode)
         },
         {
           role: "user",
