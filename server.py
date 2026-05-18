@@ -6,6 +6,7 @@ import edge_tts
 import uuid
 import os
 from groq import Groq
+import tempfile
 
 app = FastAPI()
 
@@ -29,11 +30,28 @@ def root():
     return {"ok": True}
 
 # ----------------------
-# Speech-to-text (заглушка)
+# Speech-to-text 
 # ----------------------
 @app.post("/speech")
 async def speech(file: UploadFile = File(...)):
-    return {"text": "Hello, how are you?"}
+    client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+
+    # сохраняем файл временно
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".webm") as tmp:
+        tmp.write(await file.read())
+        tmp_path = tmp.name
+
+    # Whisper через Groq
+    with open(tmp_path, "rb") as audio_file:
+        transcript = client.audio.transcriptions.create(
+            file=audio_file,
+            model="whisper-large-v3",
+            language="en"
+        )
+
+    return {
+        "text": transcript.text
+    }
 
 # ----------------------
 # TTS
