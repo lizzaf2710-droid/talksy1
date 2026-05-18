@@ -125,6 +125,36 @@ bg-[#0a0f1f]">
 </div>
 
 
+<div class="flex gap-2 p-3 overflow-x-auto">
+
+  <button onclick="setVoiceMode('general')"
+    class="px-3 py-1 bg-white/10 rounded-xl">
+    General
+  </button>
+
+  <button onclick="setVoiceMode('interview')"
+    class="px-3 py-1 bg-white/10 rounded-xl">
+    Interview
+  </button>
+
+  <button onclick="setVoiceMode('friends')"
+    class="px-3 py-1 bg-white/10 rounded-xl">
+    Friends
+  </button>
+
+  <button onclick="setVoiceMode('travel')"
+    class="px-3 py-1 bg-white/10 rounded-xl">
+    Travel
+  </button>
+
+  <button onclick="setVoiceMode('cafe')"
+    class="px-3 py-1 bg-white/10 rounded-xl">
+    Cafe
+  </button>
+
+</div>
+
+
     <!-- CHAT -->
     <div id="chat"
   class="flex-1 p-4 md:p-6 space-y-4 overflow-y-auto">
@@ -188,6 +218,22 @@ if (!["A", "B", "C"].includes(currentLevel)) {
 }
 let currentAudio = null;
 let voiceDictFilter = "all";
+
+const scenarios = {
+  interview: {
+    system: "You are an interviewer. Ask structured interview questions."
+  },
+  friends: {
+    system: "You are a friendly casual friend. Talk naturally."
+  },
+  travel: {
+    system: "You are a travel guide helping with trips."
+  },
+  cafe: {
+    system: "You are a barista in a cafe speaking simple English."
+  }
+};
+
 
 
 function goBack() {
@@ -256,7 +302,10 @@ async function sendAudio(blob) {
 
   const data = await res.json();
 
-  const text = data.text || "I didn't hear that";
+  const text =
+    data.text || 
+    data.message?.content?.trim() ||
+    "I didn't hear that";
 
   console.log("TRANSCRIBED:", text);
 
@@ -1450,6 +1499,128 @@ function updateLevelButton() {
 function getLevel() {
   return localStorage.getItem("selectedLevel") || "A";
 }
+
+
+
+
+
+
+async function speakAI(text) {
+  const res = await fetch("https://talksy-node-production.up.railway.app/tts", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      text,
+      voice: "en-US-AriaNeural"
+    })
+  });
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+
+  const audio = new Audio(url);
+  await audio.play();
+}
+
+
+
+
+
+
+
+function startVoiceInput() {
+  const SpeechRecognition =
+    window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  const recognition = new SpeechRecognition();
+
+  recognition.lang = "en-US";
+  recognition.interimResults = false;
+
+  recognition.onresult = async (event) => {
+    const text = event.results[0][0].transcript;
+
+    await handleAIResponse(text);
+  };
+
+  recognition.start();
+}
+
+
+
+
+async function setVoiceMode(mode) {
+  localStorage.setItem("voice_mode", mode);
+
+  const chat = document.getElementById("chat");
+  if (chat) chat.innerHTML = "";
+
+  await speakAI(`Scenario ${mode} started`);
+
+  const first = await getScenarioReply(mode, "");
+  const bubble = addVoiceMessage("ai", 3, first);
+
+  saveVoiceMessage("ai", first, 3);
+  playTTS(first, bubble);
+}
+
+
+async function startFirstVoiceTurn(mode) {
+  const first = await getScenarioReply(mode, "");
+
+  await speakAI(first);
+}
+
+
+async function getScenarioReply(mode, userText) {
+  const res = await fetch("https://web-production-33e9e.up.railway.app/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "llama3",
+      messages: [
+        {
+          role: "system",
+          content: scenarios[mode]?.system || "You are a helpful assistant"
+        },
+        {
+          role: "user",
+          content: userText || "Start the conversation"
+        }
+      ]
+    })
+  });
+
+  const data = await res.json();
+  return data.message?.content?.trim() || "Tell me more!";
+}
+
+
+
+
+async function getAIReply(userText) {
+  const res = await fetch("https://web-production-33e9e.up.railway.app/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "llama3",
+      messages: [
+        {
+          role: "system",
+          content: `You are a helpful English tutor. Level: ${getLevel()}`
+        },
+        { role: "user", content: userText }
+      ]
+    })
+  });
+
+  const data = await res.json();
+  return data.message?.content?.trim() || "OK!";
+}
+
+
+
+
 
 </script>
 
