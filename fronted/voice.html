@@ -1700,16 +1700,23 @@ async function setVoiceMode(mode, options = { reset: false }) {
 
     // 🧠 СЛУЧАЙ 1: новый чат / первый запуск сценария
     if (savedChat.length === 0) {
-      const systemText = await getScenarioReply(mode, "");
+  const systemText = await getScenarioReply(mode, "");
 
-      const bubble = addVoiceMessage("ai", 3, systemText);
-      saveVoiceMessage("ai", systemText, 3);
+  // 💬 сообщение сценария в чат
+  const startMsg = `✨ Scenario "${mode}" started`;
 
-      playTTS(systemText, bubble);
+  addSystemMessage(startMsg);
+  saveVoiceMessage("ai", startMsg, 0, "text");
 
-      console.log("SCENARIO STARTED (FIRST TURN)");
-      return;
-    }
+  // 🎤 первое голосовое сообщение AI
+  const bubble = addVoiceMessage("ai", 3, systemText);
+  saveVoiceMessage("ai", systemText, 3);
+
+  playTTS(systemText, bubble);
+
+  return;
+}
+
 
     // 🧠 СЛУЧАЙ 2: чат уже есть → просто уведомление
     const intro = `Scenario "${mode}" is active. Level ${getLevel()}`;
@@ -1798,6 +1805,35 @@ window.startVoiceChat = function(mode) {
 
   window.location.href = "voice.html?id=" + chatId;
 };
+
+
+function addSystemMessage(text) {
+  const chat = document.getElementById("chat");
+  if (!chat) return;
+
+  const wrapper = document.createElement("div");
+  wrapper.className = "flex justify-center";
+
+  const bubble = document.createElement("div");
+
+  bubble.className = `
+  px-4 py-2 rounded-2xl
+  bg-cyan-400/10
+  backdrop-blur-xl
+  border border-cyan-300/20
+  text-cyan-100 text-sm opacity-90
+  max-w-[80%] text-center
+  shadow-[0_0_20px_rgba(34,211,238,0.25)]
+`;
+
+
+  bubble.textContent = text;
+
+  wrapper.appendChild(bubble);
+  chat.appendChild(wrapper);
+
+  chat.scrollTop = chat.scrollHeight;
+}
 
 
 </script>
