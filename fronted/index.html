@@ -78,9 +78,12 @@ class="bg-purple-500 px-4 py-2 rounded-xl hover:bg-purple-600 transition">
 
 <!-- SCENARIOS -->
 <section class="mt-24 px-4 md:px-10">
+  <h2 class="text-2xl font-bold mb-6 text-center">
+    💬 Сценарии чата
+  </h2>
   <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
     <div class="bg-white/10 p-6 rounded-2xl">
-      <h2 class="font-bold mb-2">Job Interview</h2>
+      <h2 class="font-bold mb-2">Интервью на работе</h2>
       <p class="text-gray-300 text-sm mb-4">Практика собеседований</p>
       <button onclick="startChat('interview')"
         class="bg-purple-500 w-full py-2 rounded-xl hover:bg-purple-600">
@@ -117,6 +120,54 @@ class="bg-purple-500 px-4 py-2 rounded-xl hover:bg-purple-600 transition">
 
   </div>
 </section>
+
+<section class="mt-16 px-4 md:px-10">
+  <h2 class="text-2xl font-bold mb-6 text-center">
+    🎧 Сценарии голосового чата
+  </h2>
+
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+    <div class="bg-white/10 p-6 rounded-2xl">
+      <h2 class="font-bold mb-2">Интервью на работе</h2>
+      <p class="text-gray-300 text-sm mb-4">Говори как на собеседовании</p>
+      <button onclick="startVoiceChat('interview')"
+        class="bg-purple-500 w-full py-2 rounded-xl hover:bg-purple-600">
+        Попробовать сейчас
+      </button>
+    </div>
+
+    <div class="bg-white/10 p-6 rounded-2xl">
+      <h2 class="font-bold mb-2">Общение с друзьями</h2>
+      <p class="text-gray-300 text-sm mb-4">Живой разговор</p>
+      <button onclick="startVoiceChat('friends')"
+        class="bg-purple-500 w-full py-2 rounded-xl hover:bg-purple-600">
+        Попробовать сейчас
+      </button>
+    </div>
+
+    <div class="bg-white/10 p-6 rounded-2xl">
+      <h2 class="font-bold mb-2">В кафе</h2>
+      <p class="text-gray-300 text-sm mb-4">Заказ еды и диалоги</p>
+      <button onclick="startVoiceChat('cafe')"
+        class="bg-purple-500 w-full py-2 rounded-xl hover:bg-purple-600">
+        Попробовать сейчас
+      </button>
+    </div>
+
+
+    <div class="bg-white/10 p-6 rounded-2xl">
+      <h2 class="font-bold mb-2">Путешествие</h2>
+      <p class="text-gray-300 text-sm mb-4">Аэропорт, отель, такси</p>
+      <button onclick="startVoiceChat('travel')"
+        class="bg-purple-500 w-full py-2 rounded-xl hover:bg-purple-600">
+        Попробовать сейчас
+      </button>
+    </div>
+
+  </div>
+</section>
+
 
 <!-- FOOTER -->
 <footer class="text-center text-gray-400 mt-20 py-6 md:py-10 text-sm">
@@ -182,6 +233,21 @@ function openModal(type) {
 
 function closeModal() {
   document.getElementById("modal").classList.add("hidden");
+}
+
+
+function startVoiceChat(mode) {
+  const chatId = Date.now().toString();
+
+  // создаём пустой голосовой чат
+  localStorage.setItem("voice_chat_" + chatId, JSON.stringify([]));
+  localStorage.setItem("voice_chat_" + chatId + "_title", mode + " voice chat");
+
+  // сохраняем сценарий
+  localStorage.setItem("voice_pending_mode_" + chatId, mode);
+
+  // переходим в voice.html
+  window.location.href = "voice.html?id=" + chatId;
 }
 </script>
 

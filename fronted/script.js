@@ -1045,6 +1045,12 @@ window.openVoice = function () {
   window.location.href = "./voice.html";
 };
 
+window.goHome = function () {
+  window.location.href = "./index.html";
+};
+
+
+
 
 
 // ===============================

@@ -104,6 +104,7 @@ bg-[#0a0f1f]">
     🎧 Voice
   </button>
 
+
   <button onclick="openVoiceDictionary()"
   class="bg-purple-500/40 hover:bg-purple-500/60 
          text-white px-3 py-1 rounded-lg text-sm 
@@ -116,6 +117,19 @@ bg-[#0a0f1f]">
          text-white px-3 py-1 rounded-lg text-sm
          border border-purple-300/50">
   Level A
+</button>
+
+
+   <button onclick="goBackToChat()"
+  class="bg-purple-500/20 hover:bg-purple-500/40
+         px-3 py-1 rounded-lg text-sm border border-purple-300/30">
+  Chat
+</button>
+
+<button onclick="goHome()"
+  class="bg-purple-500/20 hover:bg-purple-500/40
+         px-3 py-1 rounded-lg text-sm border border-purple-300/30">
+  Home
 </button>
 
 <div class="flex gap-2 p-3 overflow-x-auto">
@@ -169,13 +183,10 @@ bg-[#0a0f1f]">
       </div>
 
       <button id="recordBtn"
-  onmousedown="startRecording()"
-  onmouseup="stopRecording()"
-  ontouchstart="startRecording()"
-  ontouchend="stopRecording()"
+  onclick="toggleRecording()"
   class="record-glow w-20 h-20 rounded-full flex items-center justify-center
-bg-white/10 backdrop-blur-xl border border-white/20
-text-purple-300 shadow-2xl active:scale-95 transition duration-200">
+  bg-white/10 backdrop-blur-xl border border-white/20
+  text-purple-300 shadow-2xl active:scale-95 transition duration-200">
 
   <svg xmlns="http://www.w3.org/2000/svg"
        class="w-8 h-8"
@@ -237,6 +248,66 @@ const scenarios = {
 };
 
 
+// =========================
+// CHAT STORAGE MANAGER
+// =========================
+
+function getChatKey(id = currentChatId) {
+  return `voice_chat_${id}`;
+}
+
+function getChatTitleKey(id = currentChatId) {
+  return `voice_chat_${id}_title`;
+}
+
+function getChatMessages(id = currentChatId) {
+  return JSON.parse(localStorage.getItem(getChatKey(id))) || [];
+}
+
+function saveChatMessages(messages, id = currentChatId) {
+  localStorage.setItem(getChatKey(id), JSON.stringify(messages));
+}
+
+function addMessageToChat(message, id = currentChatId) {
+  const messages = getChatMessages(id);
+  messages.push({
+    ...message,
+    time: Date.now()
+  });
+  saveChatMessages(messages, id);
+}
+
+function clearChat(id = currentChatId) {
+  saveChatMessages([], id);
+}
+
+function setChatTitle(title, id = currentChatId) {
+  localStorage.setItem(getChatTitleKey(id), title);
+}
+
+function getChatTitle(id = currentChatId) {
+  return localStorage.getItem(getChatTitleKey(id)) || "New chat";
+}
+
+function getChatHistory() {
+  const messages = getChatMessages();
+
+  return messages.map(msg => ({
+    role: msg.role,
+    content: msg.text
+  }));
+}
+
+
+function toggleRecording() {
+  if (isRecording) {
+    stopRecording();
+  } else {
+    startRecording();
+  }
+}
+
+
 
 function goBack() {
   window.location.href = "chat.html";
@@ -244,12 +315,13 @@ function goBack() {
 
 async function startRecording() {
   if (isRecording) return;
+
   isRecording = true;
 
-  document.getElementById("status").innerText = "Listening...";
+  document.getElementById("status").innerText = "Recording... Tap to stop";
 
   const btn = document.getElementById("recordBtn");
-  btn.classList.add("scale-110", "bg-purple-500/30");
+  btn.classList.add("bg-purple-500/30", "scale-110");
 
   const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
@@ -262,12 +334,12 @@ async function startRecording() {
 
   mediaRecorder.onstop = async () => {
     const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
-
     await sendAudio(audioBlob);
   };
 
   mediaRecorder.start();
 }
+
 
 
 function stopRecording() {
@@ -278,7 +350,7 @@ function stopRecording() {
   document.getElementById("status").innerText = "Processing...";
 
   const btn = document.getElementById("recordBtn");
-  btn.classList.remove("scale-110", "bg-purple-500/30");
+  btn.classList.remove("bg-purple-500/30", "scale-110");
 
   if (mediaRecorder && mediaRecorder.state !== "inactive") {
     mediaRecorder.stop();
@@ -418,7 +490,7 @@ async function handleAIResponse(text) {
   console.log("INPUT:", text);
 
   try {
-    // 1. Проверка ошибок
+    // 1. Проверяем ошибки
     const correctionRes = await fetch(
       "https://web-production-33e9e.up.railway.app/chat",
       {
@@ -469,69 +541,49 @@ Return ONLY this format.
         : "";
     }
 
-    // =========================
-    // 2. ЕСЛИ ОШИБОК НЕТ
-    // =========================
-    if (!hasErrors) {
-      const replyRes = await fetch(
-        "https://web-production-33e9e.up.railway.app/chat",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            model: "llama3",
-            messages: [
-              {
-                role: "system",
-                content: `
-You are a strict English tutor.
+    // Показываем исправление
+    if (hasErrors) {
+      const correctionMessage =
+        `💡 ${explanation}\n\nCorrected: ${correctedText}`;
+
+      addTextMessage("ai", correctionMessage);
+      saveVoiceMessage("ai", correctionMessage, 0, "text");
+    }
+
+    // 2. Загружаем историю чата
+    const history = getChatHistory();
+
+    // 3. Используем исправленный текст как последнее сообщение пользователя
+    history.push({
+      role: "user",
+      content: correctedText
+    });
+
+    if (getChatTitle() === "New chat") {
+      setChatTitle(correctedText.slice(0, 30));
+      renderChats();
+    }
+
+    // 4. Системный prompt
+    history.unshift({
+      role: "system",
+      content: `
+You are a friendly English tutor.
 
 Current student level: ${getLevel()}
 
 Rules:
-- Level A: very simple words, short sentences (5–8 words), slow English
-- Level B: normal everyday English, medium sentences
-- Level C: advanced English, natural expressions, idioms allowed
+- Level A: very simple words, short sentences (5–8 words)
+- Level B: normal everyday English
+- Level C: advanced natural English, idioms allowed
 
-Always adapt ALL your responses to the level above.
+Always adapt your responses to the student's level.
 
-Reply in 1–2 sentences + 1 question.
+Reply in 1–2 sentences and ask 1 follow-up question.
 `
-              },
-              { role: "user", content: text }
-            ]
-          })
-        }
-      );
+    });
 
-      const replyData = await replyRes.json();
-
-      const reply =
-        replyData.message?.content?.trim() ||
-        "That's interesting! What happened next?";
-
-      const duration = Math.max(1, Math.ceil(reply.split(" ").length / 3));
-
-      const bubble = addVoiceMessage("ai", duration, reply);
-      saveVoiceMessage("ai", reply, duration);
-
-      playTTS(reply, bubble);
-      return;
-    }
-
-    // =========================
-    // 3. ЕСЛИ ЕСТЬ ОШИБКИ
-    // =========================
-
-    // 🔹 ТЕКСТОВОЕ СООБЩЕНИЕ (ТОЛЬКО исправление + объяснение)
-    const textMessage =
-      `💡 ${explanation}\n\n` +
-      `Corrected: ${correctedText}`;
-
-    addTextMessage("ai", textMessage);
-    saveVoiceMessage("ai", textMessage, 0, "text"); // можно хранить как текст
-
-    // 🔹 ОТДЕЛЬНО ГОЛОС — только продолжение диалога
+    // 5. Запрос к AI
     const replyRes = await fetch(
       "https://web-production-33e9e.up.railway.app/chat",
       {
@@ -539,17 +591,7 @@ Reply in 1–2 sentences + 1 question.
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           model: "llama3",
-          messages: [
-            {
-              role: "system",
-              content: `
-You are a friendly English tutor.
-Level: ${getLevel()}
-Reply in 1–2 sentences + 1 question.
-`
-            },
-            { role: "user", content: correctedText }
-          ]
+          messages: history
         })
       }
     );
@@ -558,7 +600,7 @@ Reply in 1–2 sentences + 1 question.
 
     const reply =
       replyData.message?.content?.trim() ||
-      "That's interesting! What happened next?";
+      "That's interesting! Tell me more.";
 
     const duration = Math.max(
       1,
@@ -576,25 +618,22 @@ Reply in 1–2 sentences + 1 question.
   }
 }
 
-window.onload = function () {
+
+
+window.onload = async function () {
   initDefaultChat();
   renderChats();
 
-  // Загружаем сохранённый голос
   selectedVoice =
     localStorage.getItem("selectedVoice") || "en-US-AriaNeural";
 
   document.querySelectorAll('input[name="voice"]').forEach(r => {
-  r.checked = (r.value === selectedVoice);
-});
+    r.checked = (r.value === selectedVoice);
+  });
 
   document.querySelectorAll('input[name="level"]').forEach(r => {
-  r.checked = (r.value === currentLevel);
-});
-
-
-  // Загружаем текущий чат
-  loadChat(currentChatId);
+    r.checked = (r.value === currentLevel);
+  });
 
   updateLevelButton();
 
@@ -602,8 +641,31 @@ window.onload = function () {
   flashFlipped = false;
   updateProgress();
 
+  const urlParams = new URLSearchParams(window.location.search);
+  const chatId = urlParams.get("id");
+
+  if (chatId) {
+    currentChatId = chatId;
+    localStorage.setItem("last_chat_id", chatId);
+  }
+
+  // 1. загружаем чат
+  loadChat(currentChatId);
+
+  // 2. проверяем сценарий
+  const modeKey = "voice_pending_mode_" + currentChatId;
+  const mode = localStorage.getItem(modeKey);
+
+  if (mode) {
+    localStorage.removeItem(modeKey);
+
+    // 3. запускаем СРАЗУ после загрузки DOM чата
+    await setVoiceMode(mode, { reset: true });
+  }
+
   console.log("APP STARTED, VOICE:", selectedVoice);
 };
+
 
 
 function initDefaultChat() {
@@ -626,9 +688,7 @@ function renderChats() {
 
     if (key.startsWith("voice_chat_") && !key.endsWith("_title")) {
       const id = key.replace("voice_chat_", "");
-      const title =
-        localStorage.getItem("voice_chat_" + id + "_title") || "Chat";
-
+      const title = getChatTitle(id);
       chats.push({ id, title });
     }
   }
@@ -666,8 +726,8 @@ function newChat() {
   const id = Date.now().toString();
 
   // создаём пустой чат
-  localStorage.setItem("voice_chat_" + id, JSON.stringify([]));
-  localStorage.setItem("voice_chat_" + id + "_title", "New chat");
+  saveChatMessages([], id);
+  setChatTitle("New chat", id);
 
   // переключаемся на него
   currentChatId = id;
@@ -684,36 +744,39 @@ function newChat() {
 function loadChat(id) {
   currentChatId = id;
   localStorage.setItem("last_chat_id", id);
+
   renderChats();
 
   const chat = document.getElementById("chat");
+  if (!chat) return;
+
   chat.innerHTML = "";
 
-  const messages =
-    JSON.parse(localStorage.getItem("voice_chat_" + id)) || [];
+  const messages = getChatMessages();
 
   messages.forEach(msg => {
     if (msg.type === "text") {
       addTextMessage(msg.role, msg.text);
     } else {
-      addVoiceMessage(msg.role, msg.duration || 2, msg.text);
+      addVoiceMessage(
+        msg.role,
+        msg.duration || 2,
+        msg.text
+      );
     }
   });
+
+  chat.scrollTop = chat.scrollHeight;
 }
 
-function saveVoiceMessage(role, text, duration = 2, type = "voice") {
-  const key = "voice_chat_" + currentChatId;
-  const messages = JSON.parse(localStorage.getItem(key)) || [];
 
-  messages.push({
+function saveVoiceMessage(role, text, duration = 2, type = "voice") {
+  addMessageToChat({
     role,
     text,
     duration,
-    type,
-    time: Date.now()
+    type
   });
-
-  localStorage.setItem(key, JSON.stringify(messages));
 }
 
 function deleteChat(id) {
@@ -732,10 +795,7 @@ function renameChat(id) {
   const name = prompt("Rename chat:", current);
 
   if (name && name.trim()) {
-    localStorage.setItem(
-      "voice_chat_" + id + "_title",
-      name.trim()
-    );
+    setChatTitle(name.trim(), id);
     renderChats();
   }
 }
@@ -1624,21 +1684,43 @@ function startVoiceInput() {
 
 
 
-async function setVoiceMode(mode) {
-  localStorage.setItem("voice_mode", mode);
+async function setVoiceMode(mode, options = { reset: false }) {
+  try {
+    localStorage.setItem("voice_mode", mode);
 
-  const chat = document.getElementById("chat");
-  if (chat) chat.innerHTML = "";
+    const chat = document.getElementById("chat");
+    if (!chat) return;
 
-  await speakAI(`Scenario ${mode} started. Level ${getLevel()}`);
+    const savedChat = getChatMessages();
 
-  const first = await getScenarioReply(mode, "");
-  const bubble = addVoiceMessage("ai", 3, first);
+    // 🔥 если нужен reset — очищаем ВСЕГДА
+    if (options.reset) {
+      chat.innerHTML = "";
+    }
 
-  saveVoiceMessage("ai", first, 3);
-  playTTS(first, bubble);
+    // 🧠 СЛУЧАЙ 1: новый чат / первый запуск сценария
+    if (savedChat.length === 0) {
+      const systemText = await getScenarioReply(mode, "");
+
+      const bubble = addVoiceMessage("ai", 3, systemText);
+      saveVoiceMessage("ai", systemText, 3);
+
+      playTTS(systemText, bubble);
+
+      console.log("SCENARIO STARTED (FIRST TURN)");
+      return;
+    }
+
+    // 🧠 СЛУЧАЙ 2: чат уже есть → просто уведомление
+    const intro = `Scenario "${mode}" is active. Level ${getLevel()}`;
+
+    await speakAI(intro);
+
+    console.log("SCENARIO RESUMED");
+  } catch (err) {
+    console.error("setVoiceMode error:", err);
+  }
 }
-
 
 async function startFirstVoiceTurn(mode) {
   const first = await getScenarioReply(mode, "");
@@ -1695,6 +1777,27 @@ async function getAIReply(userText) {
 
 
 
+// Переход на главный экран
+function goHome() {
+  window.location.href = "index.html";
+}
+
+
+
+function goBackToChat() {
+  window.location.href = "chat.html";
+}
+
+
+window.startVoiceChat = function(mode) {
+  const chatId = Date.now().toString();
+
+  localStorage.setItem("voice_chat_" + chatId, JSON.stringify([]));
+  localStorage.setItem("voice_chat_" + chatId + "_title", mode + " voice chat");
+  localStorage.setItem("voice_pending_mode_" + chatId, mode);
+
+  window.location.href = "voice.html?id=" + chatId;
+};
 
 
 </script>
