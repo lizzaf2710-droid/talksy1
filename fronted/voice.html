@@ -219,6 +219,7 @@ let currentChatId = localStorage.getItem("last_chat_id") || "main";
 let mediaRecorder;
 let audioChunks = [];
 let isRecording = false;
+let isProcessingAI = false;
 let selectedVoice =
   localStorage.getItem("selectedVoice") || "en-US-AriaNeural";
 let currentLevel = localStorage.getItem("selectedLevel") || "A";
@@ -602,6 +603,12 @@ Reply in 1–2 sentences and ask 1 follow-up question.
       replyData.message?.content?.trim() ||
       "That's interesting! Tell me more.";
 
+    if (!reply || reply.length < 2) {
+      console.error("Empty AI reply");
+      addTextMessage("ai", "⚠️ No response from AI");
+      return;
+    }
+
     const duration = Math.max(
       1,
       Math.ceil(reply.split(" ").length / 3)
@@ -609,6 +616,8 @@ Reply in 1–2 sentences and ask 1 follow-up question.
 
     const bubble = addVoiceMessage("ai", duration, reply);
     saveVoiceMessage("ai", reply, duration);
+
+    await new Promise(r => setTimeout(r, 300));
 
     playTTS(reply, bubble);
 
@@ -806,6 +815,11 @@ function renameChat(id) {
 
 async function playTTS(text, bubble) {
   if (!bubble) return;
+  if (currentAudio) {
+  currentAudio.pause();
+  currentAudio = null;
+}
+
 
   try {
     // Останавливаем текущее аудио
@@ -858,10 +872,17 @@ async function playTTS(text, bubble) {
     });
 
     if (!res.ok) {
-      throw new Error("TTS request failed");
+      const errText = await res.text();
+      console.error("TTS failed", errText);
+      return;
     }
 
     const blob = await res.blob();
+
+    if (!blob || blob.size === 0) {
+      console.error("Empty TTS audio");
+      return;
+    }
 
     // --- НАДЁЖНОЕ ОПРЕДЕЛЕНИЕ ДЛИТЕЛЬНОСТИ ---
     // Используем Web Audio API, потому что audio.duration
@@ -885,6 +906,10 @@ async function playTTS(text, bubble) {
     // Создаём Audio
     const audioUrl = URL.createObjectURL(blob);
     const audio = new Audio(audioUrl);
+
+    audio.preload = "auto";
+    audio.crossOrigin = "anonymous";
+
     currentAudio = audio;
 
     // Обновление UI
@@ -1673,11 +1698,18 @@ function startVoiceInput() {
   recognition.interimResults = false;
 
   recognition.onresult = async (event) => {
-    const text = event.results[0][0].transcript;
+  if (isProcessingAI) return;
 
+  const text = event.results[0][0].transcript;
+
+  isProcessingAI = true;
+
+  try {
     await handleAIResponse(text);
-  };
-
+  } finally {
+    isProcessingAI = false;
+  }
+};
   recognition.start();
 }
 
@@ -1694,7 +1726,7 @@ async function setVoiceMode(mode, options = { reset: false }) {
     const savedChat = getChatMessages();
 
     // 🔥 если нужен reset — очищаем ВСЕГДА
-    if (options.reset) {
+    if (options.reset || savedChat.length === 0) {
       chat.innerHTML = "";
     }
 
