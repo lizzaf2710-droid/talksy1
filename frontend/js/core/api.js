@@ -1,4 +1,5 @@
-const API_BASE = "/api";
+const NODE_API = "https://talksy-node-production.up.railway.app";
+const VOICE_API ="https://web-production-33e9e.up.railway.app";
 
 /**
  * Универсальный JSON-запрос
@@ -21,7 +22,7 @@ async function request(endpoint, options = {}) {
                 : JSON.stringify(options.body);
     }
 
-    const res = await fetch(API_BASE + endpoint, config);
+    const res = await fetch(NODE_API + endpoint, config);
 
     let data;
     const contentType = res.headers.get("content-type");
@@ -102,19 +103,27 @@ export async function saveFlashcard(card) {
 export async function chat(messages) {
   return request("/chat", {
     method: "POST",
-    body: { model: "llama3", messages }
+    body: { messages }
   });
 }
 
 export async function speech(formData) {
-  return request("/speech", {
+  const res = await fetch("https://web-production-33e9e.up.railway.app/speech", {
     method: "POST",
     body: formData
   });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(err || "Speech error");
+  }
+
+  return res.blob();
 }
 
+
 export async function tts(text, voice) {
-  const res = await fetch(API_BASE + "/tts", {
+  const res = await fetch("https://web-production-33e9e.up.railway.app/tts", {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
