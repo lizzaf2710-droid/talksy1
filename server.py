@@ -8,10 +8,14 @@ import os
 from groq import Groq
 import tempfile
 
-app = FastAPI()
+api_key = os.getenv("GROQ_API_KEY")
 
-# Groq client
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+if not api_key:
+    raise ValueError("GROQ_API_KEY is not set")
+
+client = Groq(api_key=api_key)
+
+app = FastAPI()
 
 # CORS
 app.add_middleware(
@@ -34,24 +38,22 @@ def root():
 # ----------------------
 @app.post("/speech")
 async def speech(file: UploadFile = File(...)):
-    client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-
-    # сохраняем файл временно
     with tempfile.NamedTemporaryFile(delete=False, suffix=".webm") as tmp:
         tmp.write(await file.read())
         tmp_path = tmp.name
 
-    # Whisper через Groq
-    with open(tmp_path, "rb") as audio_file:
-        transcript = client.audio.transcriptions.create(
-            file=audio_file,
-            model="whisper-large-v3",
-            language="en"
-        )
+    try:
+        with open(tmp_path, "rb") as audio_file:
+            transcript = client.audio.transcriptions.create(
+                file=audio_file,
+                model="whisper-large-v3",
+                language="en"
+            )
 
-    return {
-        "text": transcript.text
-    }
+        return {"text": transcript.text}
+
+    finally:
+        os.remove(tmp_path)
 
 # ----------------------
 # TTS
@@ -86,24 +88,23 @@ class ChatRequest(BaseModel):
 
 @app.post("/chat")
 async def chat(data: ChatRequest):
+
+    model = data.model if data.model else "llama-3.3-70b-versatile"
+
     messages = [
-        {
-            "role": msg.role,
-            "content": msg.content
-        }
-        for msg in data.messages
+        {"role": m.role, "content": m.content}
+        for m in data.messages
     ]
 
     response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model=model,
         messages=messages,
         temperature=0.7
     )
 
-    reply = response.choices[0].message.content
-
     return {
         "message": {
-            "content": reply
+            "content": response.choices[0].message.content
         }
     }
+
