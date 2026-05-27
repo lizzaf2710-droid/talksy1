@@ -89,7 +89,7 @@ class ChatRequest(BaseModel):
 @app.post("/chat")
 async def chat(data: ChatRequest):
 
-    model = data.model if data.model else "llama-3.3-70b-versatile"
+    model = "llama-3.3-70b-versatile"
 
     messages = [
         {"role": m.role, "content": m.content}
