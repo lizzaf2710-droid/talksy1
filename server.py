@@ -88,22 +88,31 @@ class ChatRequest(BaseModel):
 @app.post("/chat")
 async def chat(data: ChatRequest):
 
-    model = "llama-3.3-70b-versatile"
+    try:
+        messages = [
+            {"role": m.role, "content": m.content or ""}
+            for m in data.messages
+            if m.role and m.content
+        ]
 
-    messages = [
-        {"role": m.role, "content": m.content}
-        for m in data.messages
-    ]
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=messages,
+            temperature=0.7
+        )
 
-    response = client.chat.completions.create(
-        model=model,
-        messages=messages,
-        temperature=0.7
-    )
-
-    return {
-        "message": {
-            "content": response.choices[0].message.content
+        return {
+            "message": {
+                "content": response.choices[0].message.content
+            }
         }
-    }
+
+    except Exception as e:
+        print("CHAT ERROR:", e)
+
+        return {
+            "message": {
+                "content": "Sorry, server error. Try again."
+            }
+        }
 
