@@ -74,14 +74,6 @@ Return ONLY this format.
       console.warn("Correction:", correctionMessage);
     }
 
-    // 2. history
-    const history = getChatHistory(currentChatId);
-
-    history.push({
-      role: "user",
-      content: correctedText
-    });
-
     if (typeof getChatTitle === "function" && getChatTitle(currentChatId) === "New chat") {
       setChatTitle(
         correctedText.slice(0, 30),
@@ -91,9 +83,16 @@ Return ONLY this format.
     }
 
     // 3. system prompt
-    history.unshift({
-      role: "system",
-      content: `
+
+// НЕ МУТИРУЕМ ORIGINAL
+const history = [...getChatHistory(currentChatId)];
+
+const trimmedHistory = history.slice(-12);
+
+const safeHistory = [
+  {
+    role: "system",
+    content: `
 You are a friendly English tutor.
 
 Current student level: ${getLevel()}
@@ -104,17 +103,34 @@ Rules:
 - Level C: advanced natural English, idioms allowed
 
 Always adapt your responses.
-
 Reply in 1–2 sentences and ask 1 follow-up question.
 `
-    });
+  },
+  ...trimmedHistory,
+  {
+    role: "user",
+    content: correctedText
+  }
+];
 
     // 4. AI request
-    const replyData = await chat(history);
+    const replyData = await chat(safeHistory);
 
     const reply =
       replyData.message?.content?.trim() ||
       "That's interesting! Tell me more.";
+
+    const history = getChatHistory(currentChatId).slice(-20);
+
+    history.push({
+      role: "user",
+      content: correctedText
+    });
+
+    history.push({
+      role: "assistant",
+      content: reply
+    });  
 
     // 5. bubble creation (UI responsibility stays in voice.js)
     const duration = Math.max(1, Math.ceil(reply.split(" ").length / 3));
