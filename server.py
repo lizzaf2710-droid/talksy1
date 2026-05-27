@@ -83,7 +83,6 @@ class Message(BaseModel):
     content: str
 
 class ChatRequest(BaseModel):
-    model: str
     messages: list[Message]
 
 @app.post("/chat")
