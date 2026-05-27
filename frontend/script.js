@@ -309,7 +309,7 @@ async function getCorrection(text) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "llama3",
+        model: "llama-3.3-70b-versatile",
         messages: [
           {
             role: "system",
@@ -362,7 +362,7 @@ async function getAIReply(text) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "llama3",
+        model: "llama-3.3-70b-versatile",
         messages: [
           {
             role: "system",
@@ -422,7 +422,7 @@ async function getScenarioReply(mode, userText) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "llama3",
+      model: "llama-3.3-70b-versatile",
       messages: [
         {
           role: "system",
@@ -756,7 +756,7 @@ async function translateWord(word) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "llama3",
+        model: "llama-3.3-70b-versatile",
         messages: [
           {
             role: "system",
