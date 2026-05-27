@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Talksy Chat</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+  .word {
+    cursor: pointer;
+    transition: 0.2s;
+  }
+
+  .word:hover {
+    color: #c084fc;
+  }
+
+  .word.saved {
+    color: #a855f7;
+    font-weight: 500;
+  }
+  </style>
+
+</head>
+
+<body class="bg-[#0f0c29] text-white h-[100dvh] flex flex-col md:flex-row overflow-hidden">
+
+  <!-- SIDEBAR -->
+  <div id="sidebar"
+  class="fixed md:static top-0 left-0 h-[100dvh] w-64 bg-black/90 md:bg-black/30 p-3 flex flex-col
+  transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out z-50">
+
+    <button onclick="newChat()"
+      class="bg-purple-500 hover:bg-purple-600 text-white py-2 rounded-xl mb-3">
+      + Новый чат
+    </button>
+
+    <div id="chatList" class="flex-1 overflow-y-auto"></div>
+
+  </div>
+
+<div id="overlay"
+  onclick="toggleSidebar()"
+  class="fixed inset-0 bg-black/60 hidden z-40 md:hidden transition-opacity duration-300">
+</div>
+
+  <!-- MAIN CHAT -->
+  <div class="flex-1 flex flex-col h-[100dvh]">
+
+    <div class="p-4 border-b border-white/10 flex items-center justify-between">
+      <div class= "flex items-center gap-3">
+
+  <!-- ☰ кнопка -->
+        <button onclick="toggleSidebar()" class="md:hidden text-xl">
+          ☰
+        </button>
+
+        <h1 class="text-lg md:text-xl font-bold">Talksy AI</h1>
+        </div>
+
+      </div>
+
+<div id="levelMenu"
+     class="hidden absolute top-14 right-4 bg-black/90 p-2 rounded-xl text-sm z-50">
+
+  <div onclick="setLevel('A')" class="p-2 hover:bg-white/10 rounded cursor-pointer">
+    A - Beginner
+  </div>
+
+  <div onclick="setLevel('B')" class="p-2 hover:bg-white/10 rounded cursor-pointer">
+    B - Intermediate
+  </div>
+
+  <div onclick="setLevel('C')" class="p-2 hover:bg-white/10 rounded cursor-pointer">
+    C - Advanced
+  </div>
+
+</div>
+
+
+<div class="px-4 py-2 border-b border-white/10 flex gap-2 text-sm overflow-x-auto">
+
+  <button onclick="setMode('general')" class="px-3 py-1 bg-white/10 rounded-xl hover:bg-white/20">
+    General
+  </button>
+
+  <button onclick="setMode('interview')" class="px-3 py-1 bg-white/10 rounded-xl hover:bg-white/20">
+    Interview
+  </button>
+
+  <button onclick="setMode('friends')" class="px-3 py-1 bg-white/10 rounded-xl hover:bg-white/20">
+    Friends
+  </button>
+
+  <button onclick="setMode('travel')" class="px-3 py-1 bg-white/10 rounded-xl hover:bg-white/20">
+    Travel
+  </button>
+
+  <button onclick="setMode('cafe')" class="px-3 py-1 bg-white/10 rounded-xl hover:bg-white/20">
+    Cafe
+  </button>
+
+  <!-- ✅ КНОПКА LEVEL -->
+  <button id="levelBtn"
+    onclick="toggleLevelMenu()"
+    class="px-3 py-1 bg-purple-500/30 border border-purple-400 rounded-xl text-sm hover:bg-purple-500/50 transition flex items-center gap-2">
+
+    Level
+    <span id="levelLabel" class="font-bold">B</span>
+
+  </button>
+
+  <!-- ✅ КНОПКА MY WORDS (ОТДЕЛЬНО!) -->
+  <button onclick="openWords()"
+    class="px-3 py-1 bg-purple-500 hover:bg-purple-600 rounded-xl text-white">
+    My words
+  </button>
+
+
+<button onclick="openVoice()"
+  class="px-3 py-1 bg-purple-500/40 border border-purple-400 rounded-xl">
+   Voice Chat
+</button>
+
+
+<button onclick="goHome()"
+  class="px-3 py-1 bg-purple-500/40 border border-purple-400 rounded-xl">
+  Home
+</button>
+
+</div>
+
+    <div id="chat" class="flex-1 p-4 md:p-6 space-y-3 overflow-y-auto text-[15px] md:text-base"></div>
+
+    <div class="p-3 md:p-4 border-t border-white/10 flex gap-2">
+
+      <input id="input"
+        class="flex-1 p-3 rounded-xl text-black text-sm md:text-base"
+        placeholder="Напиши сообщение..." />
+
+      <button onclick="sendMessage()" class="bg-purple-500 px-4 md:px-6 rounded-xl">
+        Send
+      </button>
+
+    </div>
+
+  </div>
+
+
+<div id="wordsScreen"
+  class="hidden fixed inset-0 bg-black/90 z-50 p-6 overflow-y-auto">
+
+  <div class="flex justify-between items-center mb-4">
+    <h2 class="text-xl font-bold">My Words</h2>
+    <button onclick="closeWords()" class="text-red-400">✕</button>
+  </div>
+
+<button onclick="openFlashcards()"
+  class="px-3 py-1 bg-purple-500 hover:bg-purple-600 rounded-xl text-white mb-4">
+  🧠 Flashcards
+</button>
+
+
+<div class="mb-4 p-3 bg-white/10 rounded-xl">
+
+  <div class="text-sm opacity-70 mb-1">Progress</div>
+
+  <div class="w-full bg-white/10 h-2 rounded-full overflow-hidden">
+    <div id="progressBar"
+      class="h-full bg-purple-500"
+      style="width: 0%"></div>
+  </div>
+
+  <div class="text-sm mt-2">
+    <span id="learnedCount">0</span> /
+    <span id="totalCount">0</span> words learned
+    (<span id="progressPercent">0</span>%)
+  </div>
+
+</div>
+
+
+  <!-- ⭐ ФИЛЬТР ВНУТРИ MY WORDS -->
+  <div class="flex gap-2 mb-4">
+    <button onclick="setWordsFilter('all')" class="px-3 py-1 bg-white/10 rounded-xl">
+      All (<span id="allCount">0</span>)
+    </button>
+
+    <button onclick="setWordsFilter('favorites')" class="px-3 py-1 bg-purple-500/40 border border-purple-400 rounded-xl">
+      ⭐ Favorites (<span id="favCount">0</span>)
+    </button>
+  </div>
+
+  <!-- СПИСОК СЛОВ -->
+  <div id="wordsList" class="space-y-2"></div>
+
+</div>
+
+<div id="flashcardsScreen"
+  class="hidden fixed inset-0 bg-black/95 z-50 flex flex-col items-center justify-center p-6">
+
+  <div class="text-white text-xl mb-6">Flashcards</div>
+
+  <!-- карточка -->
+  <div id="flashcard"
+    onclick="flipCard()"
+    class="w-72 h-44 bg-white/10 rounded-2xl flex items-center justify-center text-2xl text-center cursor-pointer transition">
+  </div>
+
+  <!-- кнопки -->
+  <div class="flex gap-4 mt-6">
+    <button onclick="prevCard()" class="px-4 py-2 bg-white/10 rounded-xl">◀</button>
+    <button onclick="nextCard()" class="px-4 py-2 bg-white/10 rounded-xl">▶</button>
+  </div>
+
+  <button onclick="closeFlashcards()" class="mt-6 text-red-400">
+    Close
+  </button>
+
+</div>
+
+  <script type = module src = "script.js"></script>
+</body>
+</html>

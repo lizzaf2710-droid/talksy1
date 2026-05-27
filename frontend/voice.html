@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Talksy Voice</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+  .playing {
+    background: #9333ea !important;
+    box-shadow: 0 0 20px rgba(147, 51, 234, 0.6);
+  }
+
+  .record-glow {
+    box-shadow:
+      0 0 20px rgba(168, 85, 247, 0.5),
+      0 0 40px rgba(168, 85, 247, 0.3);
+  }
+
+  .wave {
+    letter-spacing: 2px;
+    opacity: 0.8;
+    font-size: 12px;
+  }
+
+  .play-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: rgba(255,255,255,0.08);
+  backdrop-filter: blur(10px);
+  transition: 0.2s;
+}
+
+.play-btn:hover {
+  background: rgba(147, 51, 234, 0.25);
+  transform: scale(1.05);
+}
+
+.playing .play-btn {
+  background: rgba(147, 51, 234, 0.4);
+}
+
+.playing .progress {
+  background: linear-gradient(90deg, #a855f7, #d946ef);
+}
+
+.waveform {
+  position: relative;
+  height: 16px;
+}
+
+.progress {
+  transition: width 0.1s linear;
+}
+
+.saved-word {
+  color: #a855f7;
+  font-weight: 500;
+}
+
+.clickable-word {
+  display: inline;
+}
+
+</style>
+
+</head>
+
+<body class="text-white h-[100dvh] flex flex-col md:flex-row overflow-hidden
+bg-[#0a0f1f]">
+
+  <!-- SIDEBAR -->
+<div class="hidden md:flex w-64 bg-black/30 p-3 flex-col">
+  <button onclick="newChat()"
+    class="bg-purple-500 hover:bg-purple-600 text-white py-2 rounded-xl mb-3">
+    + New chat
+  </button>
+
+  <div id="chatList" class="flex-1 overflow-y-auto space-y-1"></div>
+</div>
+
+
+  <!-- MAIN -->
+  <div class="flex-1 flex flex-col h-[100dvh]">
+
+    <!-- HEADER -->
+    <div class="p-4 border-b border-white/10 backdrop-blur-xl bg-white/5 flex items-center gap-3">
+
+  <button onclick="goBack()" class="text-xl md:hidden">←</button>
+
+  <h1 class="text-lg md:text-xl font-bold">🎤 Voice Chat</h1>
+
+  <!-- кнопка голоса СЛЕВА -->
+  <button onclick="toggleVoiceMenu()"
+    class="bg-purple-500/40 hover:bg-purple-500/60 
+           text-white px-3 py-1 rounded-lg text-sm 
+           border border-purple-300/50 shadow-lg 
+           shadow-purple-500/30">
+    🎧 Voice
+  </button>
+
+
+  <button onclick="openVoiceDictionary()"
+  class="bg-purple-500/40 hover:bg-purple-500/60 
+         text-white px-3 py-1 rounded-lg text-sm 
+         border border-purple-300/50">
+  My Words
+</button>
+
+  <button id="levelButton" onclick="toggleLevelMenu()"
+  class="bg-purple-500/40 hover:bg-purple-500/60
+         text-white px-3 py-1 rounded-lg text-sm
+         border border-purple-300/50">
+  Level A
+</button>
+
+
+   <button onclick="goBackToChat()"
+  class="bg-purple-500/20 hover:bg-purple-500/40
+         px-3 py-1 rounded-lg text-sm border border-purple-300/30">
+  Chat
+</button>
+
+<button onclick="goHome()"
+  class="bg-purple-500/20 hover:bg-purple-500/40
+         px-3 py-1 rounded-lg text-sm border border-purple-300/30">
+  Home
+</button>
+
+<div class="flex gap-2 p-3 overflow-x-auto">
+
+  <button onclick="setVoiceMode('general')"
+    class="px-3 py-1 bg-white/10 rounded-xl">
+    General
+  </button>
+
+  <button onclick="setVoiceMode('interview')"
+    class="px-3 py-1 bg-white/10 rounded-xl">
+    Interview
+  </button>
+
+  <button onclick="setVoiceMode('friends')"
+    class="px-3 py-1 bg-white/10 rounded-xl">
+    Friends
+  </button>
+
+  <button onclick="setVoiceMode('travel')"
+    class="px-3 py-1 bg-white/10 rounded-xl">
+    Travel
+  </button>
+
+  <button onclick="setVoiceMode('cafe')"
+    class="px-3 py-1 bg-white/10 rounded-xl">
+    Cafe
+  </button>
+
+</div>
+
+  <div class="text-sm opacity-60 ml-auto">Speak mode</div>
+
+</div>
+
+
+
+
+    <!-- CHAT -->
+    <div id="chat"
+  class="flex-1 p-4 md:p-6 space-y-4 overflow-y-auto">
+
+
+    </div>
+
+    <!-- VOICE INPUT (вместо текстового) -->
+    <div class="p-4 border-t border-white/10 backdrop-blur-xl bg-white/5 flex flex-col items-center gap-3">
+
+      <div id="status" class="text-sm opacity-60">
+        Hold to speak
+      </div>
+
+      <button id="recordBtn"
+  onclick="toggleRecording()"
+  class="record-glow w-20 h-20 rounded-full flex items-center justify-center
+  bg-white/10 backdrop-blur-xl border border-white/20
+  text-purple-300 shadow-2xl active:scale-95 transition duration-200">
+
+  <svg xmlns="http://www.w3.org/2000/svg"
+       class="w-8 h-8"
+       fill="none"
+       viewBox="0 0 24 24"
+       stroke="currentColor"
+       stroke-width="1.8">
+    <path stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z" />
+    <path stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M19 10v2a7 7 0 0 1-14 0v-2" />
+    <path stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M12 19v2" />
+  </svg>
+
+</button>
+
+
+    </div>
+
+  </div>
+
+
+<div id="voiceMenu"
+  class="hidden absolute right-4 top-16 bg-black/90 
+         p-4 rounded-xl w-60 space-y-3 border border-white/10">
+
+  <div class="text-sm opacity-70 mb-2">Choose voice</div>
+
+  <!-- ARIA -->
+  <div class="flex items-center justify-between">
+    <label class="flex items-center gap-2 cursor-pointer">
+      <input type="radio" name="voice"
+        value="en-US-AriaNeural"
+        onclick="setVoice('en-US-AriaNeural')">
+      <span>Aria (female)</span>
+    </label>
+
+    <button onclick="previewVoice('en-US-AriaNeural')"
+  class="w-8 h-8 flex items-center justify-center rounded-full
+         bg-white/10 hover:bg-purple-500/30
+         border border-white/10 hover:border-purple-400/40
+         transition group">
+  
+  <svg class="w-4 h-4 text-purple-300 group-hover:text-white"
+       viewBox="0 0 24 24"
+       fill="currentColor">
+    <path d="M8 5v14l11-7z"/>
+  </svg>
+
+</button>
+
+  </div>
+
+  <!-- GUY -->
+  <div class="flex items-center justify-between">
+    <label class="flex items-center gap-2 cursor-pointer">
+      <input type="radio" name="voice"
+        value="en-US-GuyNeural"
+        onclick="setVoice('en-US-GuyNeural')">
+      <span>Guy (male)</span>
+    </label>
+
+    <button onclick="previewVoice('en-US-GuyNeural')"
+  class="w-8 h-8 flex items-center justify-center rounded-full
+         bg-white/10 hover:bg-purple-500/30
+         border border-white/10 hover:border-purple-400/40
+         transition group">
+  
+  <svg class="w-4 h-4 text-purple-300 group-hover:text-white"
+       viewBox="0 0 24 24"
+       fill="currentColor">
+    <path d="M8 5v14l11-7z"/>
+  </svg>
+
+</button>
+
+  </div>
+
+  <!-- JENNY -->
+  <div class="flex items-center justify-between">
+    <label class="flex items-center gap-2 cursor-pointer">
+      <input type="radio" name="voice"
+        value="en-US-JennyNeural"
+        onclick="setVoice('en-US-JennyNeural')">
+      <span>Jenny (female)</span>
+    </label>
+
+    <button onclick="previewVoice('en-US-JennyNeural')"
+  class="w-8 h-8 flex items-center justify-center rounded-full
+         bg-white/10 hover:bg-purple-500/30
+         border border-white/10 hover:border-purple-400/40
+         transition group">
+  
+  <svg class="w-4 h-4 text-purple-300 group-hover:text-white"
+       viewBox="0 0 24 24"
+       fill="currentColor">
+    <path d="M8 5v14l11-7z"/>
+  </svg>
+
+</button>
+
+  </div>   
+
+</div>
+
+<div id="voiceDictionaryScreen"
+  class="hidden fixed inset-0 bg-black/90 z-50 p-6 overflow-y-auto">
+
+  <div class="flex justify-between items-center mb-4">
+    <h2 class="text-xl font-bold">Voice Dictionary</h2>
+    <button onclick="closeVoiceDictionary()" class="text-red-400">✕</button>
+  </div>
+
+  <button onclick="openFlashcards()"
+  class="px-3 py-1 bg-purple-500 hover:bg-purple-600 rounded-xl text-white mb-4">
+  🧠 Flashcards
+</button>
+
+<div class="mb-4 p-3 bg-white/10 rounded-xl">
+  <div class="text-sm opacity-70 mb-1">Progress</div>
+
+  <div class="w-full bg-white/10 h-2 rounded-full overflow-hidden">
+    <div id="voiceProgressBar"
+      class="h-full bg-purple-500"
+      style="width: 0%"></div>
+  </div>
+
+  <div class="text-sm mt-2">
+    <span id="voiceLearnedCount">0</span> /
+    <span id="voiceTotalCount">0</span> words learned
+    (<span id="voiceProgressPercent">0</span>%)
+  </div>
+</div>
+
+  <div class="flex gap-2 mb-4">
+  <button id="filterAllBtn"
+    onclick="setVoiceDictFilter('all')"
+    class="px-3 py-1 rounded-xl bg-white/10 hover:bg-white/20">
+    All (<span id="allCount">0</span>)
+  </button>
+
+  <button id="filterFavBtn"
+    onclick="setVoiceDictFilter('favorites')"
+    class="px-3 py-1 rounded-xl bg-white/10 hover:bg-white/20">
+    ⭐ Favorites (<span id="favCount">0</span>)
+  </button>
+</div>
+
+  <div id="voiceWordsList" class="space-y-2"></div>
+</div>
+
+  <div id="voiceFlashcardsScreen"
+  class="hidden fixed inset-0 bg-black/95 z-50 flex flex-col items-center justify-center p-6">
+
+  <div class="text-white text-xl mb-6">Voice Flashcards</div>
+
+  <div id="voiceFlashcard"
+    onclick="flipVoiceCard()"
+    class="w-72 h-44 bg-white/10 rounded-2xl flex items-center justify-center text-2xl text-center cursor-pointer transition">
+  </div>
+
+  <div class="flex gap-4 mt-6">
+    <button onclick="prevVoiceCard()" class="px-4 py-2 bg-white/10 rounded-xl">◀</button>
+    <button onclick="nextVoiceCard()" class="px-4 py-2 bg-white/10 rounded-xl">▶</button>
+  </div>
+
+  <button onclick="closeVoiceFlashcards()" class="mt-6 text-red-400">
+    Close
+  </button>
+</div>
+
+
+
+<div id="levelMenu"
+  class="hidden absolute right-4 top-32 bg-black/90
+         p-4 rounded-xl w-40 space-y-3 border border-white/10 z-50">
+
+  <div class="text-sm opacity-70 mb-2">Choose level</div>
+
+  <label class="flex items-center gap-2 cursor-pointer">
+    <input type="radio" name="level" value="A" onclick="setLevel('A')">
+    <span>A-Beginner</span>
+  </label>
+
+  <label class="flex items-center gap-2 cursor-pointer">
+    <input type="radio" name="level" value="B" onclick="setLevel('B')">
+    <span>B-Intermediate</span>
+  </label>
+
+  <label class="flex items-center gap-2 cursor-pointer">
+    <input type="radio" name="level" value="C" onclick="setLevel('C')">
+    <span>C-Advanced</span>
+  </label>
+</div>
+
+
+<script type="module" src="./js/voice/voice.js"></script>
+</body>
+</html>
