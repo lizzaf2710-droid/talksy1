@@ -89,15 +89,30 @@ class ChatRequest(BaseModel):
 async def chat(data: ChatRequest):
 
     try:
-        messages = [
-            {"role": m.role, "content": m.content or ""}
-            for m in data.messages
-            if m.role and m.content
-        ]
+        cleaned_messages = []
+
+        for m in data.messages:
+            role = m.role
+            content = m.content
+
+            # защита от мусора
+            if role not in ["system", "user", "assistant"]:
+                print("SKIP INVALID ROLE:", role)
+                continue
+
+            if not content or not str(content).strip():
+                continue
+
+            cleaned_messages.append({
+                "role": role,
+                "content": str(content).strip()
+            })
+
+        print("FINAL MESSAGES:", cleaned_messages)
 
         response = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
-            messages=messages,
+            messages=cleaned_messages,
             temperature=0.7
         )
 
