@@ -85,9 +85,23 @@ Return ONLY this format.
     // 3. system prompt
 
 // НЕ МУТИРУЕМ ORIGINAL
-const history = [...getChatHistory(currentChatId)];
+const history = getChatHistory(currentChatId);
 
-const trimmedHistory = history.slice(-12);
+const sanitizedHistory = history
+  .map(msg => ({
+    role:
+      msg.role === "ai"
+        ? "assistant"
+        : msg.role,
+    content: msg.content || msg.text || ""
+  }))
+  .filter(msg =>
+    ["system", "user", "assistant"].includes(msg.role)
+    && msg.content.trim()
+  );
+
+const trimmedHistory = sanitizedHistory.slice(-12);
+
 
 const safeHistory = [
   {
@@ -120,22 +134,23 @@ Reply in 1–2 sentences and ask 1 follow-up question.
       replyData.message?.content?.trim() ||
       "That's interesting! Tell me more.";
 
-    const history = getChatHistory(currentChatId).slice(-20);
+    // future history sync hook
+    const updatedHistory = getChatHistory(currentChatId).slice(-20);
 
-    history.push({
+    updatedHistory.push({
       role: "user",
       content: correctedText
     });
 
-    history.push({
+    updatedHistory.push({
       role: "assistant",
       content: reply
-    });  
+    });
 
     // 5. bubble creation (UI responsibility stays in voice.js)
     const duration = Math.max(1, Math.ceil(reply.split(" ").length / 3));
 
-    const bubble = addVoiceMessage("ai", duration, reply);
+    const bubble = addVoiceMessage("assistant", duration, reply);
     saveVoiceMessage({
       role: "assistant",
       text: reply,
