@@ -137,7 +137,7 @@ Reply in 1–2 sentences and ask 1 follow-up question.
 
     const bubble = addVoiceMessage("ai", duration, reply);
     saveVoiceMessage({
-      role: "ai",
+      role: "assistant",
       text: reply,
       duration,
       type: "voice"
